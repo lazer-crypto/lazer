@@ -1803,6 +1803,34 @@ class polymat_t:
         res.set_row(self.cols,newrow)
         return res
 
+    def set_submatrix(self, start_row: int, start_col: int, val: 'polymat_t'):
+        """Sets a sub-matrix of the current matrix starting at the given position
+        
+        Args:
+            start_row (int): starting row index for the sub-matrix
+            start_col (int): starting column index for the sub-matrix
+            val (polymat_t): the matrix to be copied into the sub-matrix position
+        
+        Raises:
+            AssertionError: if the sub-matrix dimensions exceed the main matrix bounds
+        """
+        assert start_row + val.rows <= self.rows, "Sub-matrix rows exceed matrix bounds"
+        assert start_col + val.cols <= self.cols, "Sub-matrix columns exceed matrix bounds"
+
+        # the submatrices are set one element at a time
+        for i in range(val.rows):
+            for j in range(val.cols):
+                # get source element
+                elem = val.get_elem(i, j)
+                # Set element directly in target matrix
+                self.set_elem(elem, start_row + i, start_col + j)
+
+        # update operation counters
+        if val.muls > self.muls:
+            self.muls = val.muls
+        if val.adds > self.adds:
+            self.adds = val.adds
+
     def __eq__(self, a):
         """Overloads the == operator
         """
