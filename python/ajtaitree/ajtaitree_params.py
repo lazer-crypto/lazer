@@ -1,5 +1,5 @@
 from math import log2 as lg
-from math import sqrt, ceil
+from math import ceil
 
 # Create a header file with proof system parameters for
 # proving knowledge of a witness s in Rp^n (Rp = Zp[X]/(X^d + 1))
@@ -12,17 +12,21 @@ from math import sqrt, ceil
 
 vname = "param"                 # variable name
 
-deg   = 512                     # ring Rq degree d
+deg   = 64                      # ring Rq degree d
 mod   = 7213                    # ring Rq modulus q
-B     = 2                       # batch size: number of messages
-m     = 512                     # dimension of the commited vectors
+B     = 4                       # batch size: number of messages
+m     = 2                       # dimension of the commited vectors
 n     = int(ceil(m * lg(mod)))  # column dimension of L, R
-dim   = (1, 2)                  # dimension of A
+dim   = (m, 3 * n)              # dimension of A
 
-wpart = [ [0 , 1]          ]  # partition of s
-wl2   = [ sqrt(2048)       ]  # l2-norm bounds: l2(s) <= sqrt(2048)
-wbin  = [ 0                ]  # binary coeffs
-wrej  = [ 0                ]  # rejection sampling
+wpart = [   
+            list(range(0, n)),                  # partition of w
+            list(n + i for i in range(0, n)),
+            list(2 * n + i for i in range(0, n)), 
+    ]
+wl2   = [ 0, 0, 0 ]  # l2-norm bounds
+wbin  = [ 1, 1, 1 ]  # binary coeffs
+# wrej  = [ 0 ]  # rejection sampling
 
 # Optional: some linf-norm bound on x.
 # Tighter bounds result in smaller proofs.

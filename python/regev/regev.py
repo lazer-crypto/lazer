@@ -14,6 +14,32 @@ from typing import Tuple
 d, q = deg, mod
 Rq = polyring_t(d, q)
 
+def set_A_matrix(A1: polymat_t, A2: polymat_t) -> polymat_t:
+    """
+    Construct the matrix A used in the proof system.
+
+    Args:
+        A1 (polymat_t): Public key matrix.
+        A2 (polymat_t): Derived public key matrix.
+
+    Returns:
+        polymat_t: The constructed matrix A.
+    """
+    # create a zero matrix A of appropriate size
+    A = polymat_t(Rq, n + m, 2 * (n + m))
+
+    In = polymat_t.identity(Rq, n)
+    Im = polymat_t.identity(Rq, m)
+
+    # define submatrices as slices of A
+    A.set_submatrix(0, 0, A1)
+    A.set_submatrix(0, n, In)
+    A.set_submatrix(n, 0, A2)
+    A.set_submatrix(n, 2 * n, Im)
+    A.set_submatrix(n, 2 * n + m, p * Im)
+    
+    return A
+
 def keygen(ENCPP: bytes) -> Tuple[polymat_t, polymat_t, polymat_t]:
     """
     Generate the public and secret keys for the encryption scheme.
@@ -38,7 +64,7 @@ def keygen(ENCPP: bytes) -> Tuple[polymat_t, polymat_t, polymat_t]:
     S2.urandom(tau, ENCPP, 2)
     A2 = S1 * A1 + 1 * S2
     
-    return (A1, A2, S1)
+    return (A1, A2)
 
 def encrypt(
                 ENCPP: bytes, A1: polymat_t, A2: polymat_t, µ: polyvec_t
@@ -74,32 +100,6 @@ def encrypt(
     c2 = A2 * s + e2 + p * µ
 
     return (s, e1, e2, c1, c2)
-
-def set_A_matrix(A1: polymat_t, A2: polymat_t) -> polymat_t:
-    """
-    Construct the matrix A used in the proof system.
-
-    Args:
-        A1 (polymat_t): Public key matrix.
-        A2 (polymat_t): Derived public key matrix.
-
-    Returns:
-        polymat_t: The constructed matrix A.
-    """
-    # create a zero matrix A of appropriate size
-    A = polymat_t(Rq, n + m, 2 * (n + m))
-
-    In = polymat_t.identity(Rq, n)
-    Im = polymat_t.identity(Rq, m)
-
-    # define submatrices as slices of A
-    A.set_submatrix(0, 0, A1)
-    A.set_submatrix(0, n, In)
-    A.set_submatrix(n, 0, A2)
-    A.set_submatrix(n, 2 * n, Im)
-    A.set_submatrix(n, 2 * n + m, p * Im)
-    
-    return A
 
 def prove_enc(
                 PROOFPP: bytes, A: polymat_t, c1: polyvec_t, c2: polyvec_t, 
@@ -169,10 +169,9 @@ def verify_enc_proof(
         verifier.verify(π)
     except VerificationError:
         return False
-    else:
-        verify_time = time.time() - start_time
-        print(f"[OK] completed in: {verify_time:.3f} s")
-        return True
+    verify_time = time.time() - start_time
+    print(f"[OK] completed in: {verify_time:.3f} s")
+    return True
 
 def main():
     """
@@ -185,7 +184,7 @@ def main():
     shake128 = hashlib.shake_128(bytes.fromhex("02"))
     PROOFPP = shake128.digest(32)
 
-    (A1, A2, S2) = keygen(ENCPP)
+    (A1, A2) = keygen(ENCPP)
     A = set_A_matrix(A1, A2)
 
     µ_raw = bytes.fromhex("0123456789abcdef0123456789abcdef")

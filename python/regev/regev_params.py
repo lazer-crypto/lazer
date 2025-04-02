@@ -29,7 +29,7 @@ wl2   = [
             tau * sqrt(m * deg), 0
        ]
 wbin  = [ 0, 0, 0, 1 ]  # binary coeffs
-wrej  = [ 0, 0, 0, 0 ]  # rejection sampling
+# wrej  = [ 0, 0, 0, 0 ]  # rejection sampling
 
 # Optional: some linf-norm bound on x.
 # Tighter bounds result in smaller proofs.
