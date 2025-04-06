@@ -33,7 +33,7 @@ def set_A_matrix(T: MerkleTree) -> Tuple[polymat_t, polymat_t]:
     # create the binary recomposition gadget madtrix
     G = makeGmat(Rq, m, n)
 
-    # define the submatrices as slices of A0, A1 and A2
+    # define the submatrices as slices of A0 and A1
     A0.set_submatrix(0, 0, T.L)
     A0.set_submatrix(0, n, T.R)
     A0.set_submatrix(0, 2 * n, -G)
@@ -129,7 +129,6 @@ def prove_lin_open(
     t = polyvec_t(Rq, m)
 
     for i in range(len(op) - 1):
-        # Debug print dimensions
         h1, h2, pos = op[i]
         h3 = op[i + 1][0]
         
@@ -142,8 +141,8 @@ def prove_lin_open(
             # set statement and witness
             prover.set_statement(A[pos], t)
             prover.set_witness(w)
-            
-            # Generate proof
+
+            # generate proof
             start_time = time.time()
             _π = prover.prove()
             prove_time += time.time() - start_time
