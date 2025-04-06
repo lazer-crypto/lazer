@@ -312,6 +312,13 @@ void polymat_brandom (polymat_t r, unsigned int k, const uint8_t seed[32],
 void polymat_redc (polymat_t r, polymat_t a);                  
 void polymat_dump (polymat_t mat);
 
+void poly_tocrt (poly_t r);
+void poly_fromcrt (poly_t r);
+void polyvec_tocrt (polyvec_t r);
+void polyvec_fromcrt (polyvec_t r);
+void polymat_tocrt (polymat_t r);
+void polymat_fromcrt (polymat_t r);
+
 void falcon_redc (int16_t c[]);
 void falcon_add (int16_t c[], const int16_t a[], const int16_t b[]);
 void falcon_mul (int16_t c[], const int16_t a[], const int16_t b[]);
