@@ -24,9 +24,7 @@ from basil_p1_params import deg, mod, B, m, n, alpha
 
 # constants
 d, q = deg, mod
-Rq_COM = polyring_t(d, q)
-Rq_ENC = polyring_t(d, q)
-Rq_ZKP = polyring_t(d, q)
+Rq = polyring_t(d, q)
 lgB = ceil(log(B, alpha))
 
 # the commitment matrices
@@ -51,16 +49,18 @@ A_COM[1].set_submatrix(0, 0, R)
 A_COM[1].set_submatrix(0, n, L)
 A_COM[1].set_submatrix(0, 2 * n, -G)
 
-# the rOM-ISIS polynomial
-b = poly_t(Rq)
-b.urandom_bnd(-int((q-1)/2), int((q-1)/2), SIGPP, 0)
-
-# the signature proof matrix
-A_ZKP = polymat_t(Rq, m, 3 * n)
-
 # the public vector t_COM such that A_COM * w_COM + t_COM = 0
-# for our scheme we need t_COM = 0
 t_COM = polyvec_t(Rq, m)
+
+# the signature proof matrix (initialised partially)
+A_SIG = polymat_t(Rq, m, 2 * n + 3)
+A_SIG.set_submatrix(0, 0, L)
+A_SIG.set_submatrix(0, n, R)
+one = poly_t(Rq, {0 : -1})
+A_SIG.set_elem(one, 0, 2 * n)
+
+# the public vector t_COM such that A_SIG * w_SIG + t_SIG = 0
+t_SIG = polyvec_t(Rq, m)
 
 class client:
     """
@@ -79,7 +79,7 @@ class client:
         self.µ = µ
         self.T = MerkleTree(COMPP, L, R)
 
-        # self.p2_prover = lin_prover_state_t(PF2PP, lib.get_params("p2_param"))
+        self.p2_prover = lin_prover_state_t(PF2PP, lib.get_params("p2_param"))
 
     def client_query(self, precompute: bool = False) -> bytes:
         """
@@ -128,6 +128,8 @@ class client:
         """
         self.π_COM = [[] for _ in range(B)]
         
+        print('\n-------------[ Unblind (offline) ]-------------')
+
         if idx is not None:
             if idx < 0 or idx >= B:
                 raise ValueError("Index out of bounds.")
@@ -150,13 +152,13 @@ class client:
         print(f"[OK] completed in: {proof_time:.3f} s")
 
         print(f"Generating ZK proof of opening for leaf {idx}...")
-        prove_time = 0.
+        proof_time = 0.
         for i in range(len(op) - 1):
             h1, h2, pos = op[i]
             h3 = op[i + 1][0]
             
             # create witness vector
-            w = polyvec_t(Rq_COM, 3 * n, [h1, h2, h3])
+            w = polyvec_t(Rq, 3 * n, [h1, h2, h3])
             
             # create new prover instance
             p1_prover = lin_prover_state_t(PF1PP, lib.get_params("p1_param"))
@@ -168,39 +170,67 @@ class client:
                 # generate proof
                 start_time = time.time()
                 _π = p1_prover.prove()
-                prove_time += time.time() - start_time
+                proof_time += time.time() - start_time
                 self.π_COM[idx].append(_π)
-                print(f"[OK] completed proof {i + 1} of {len(op) - 1} | time elapsed : {prove_time:.3f} s | size: {len(_π) / 1024:.3f} KB")
+                print(f"[OK] completed proof {i + 1} of {len(op) - 1} | time elapsed : {proof_time:.3f} s | size: {len(_π) / 1024:.3f} KB")
             finally:
                 del p1_prover  # explicitly free prover
     
-    def client_obtain(self, vk: falcon_pkenc, z_bytes: bytes, idx: int) -> bytes:
+    def client_obtain(self, vk: Tuple[poly_t, falcon_pkenc], z_bytes: bytes, idx: int) -> [bytes, bytes]:
         """
         Obtain the blind signature on the i-th message.
 
         Args:
-            vk (falcon_pkenc): The public verification key of the issuer.
+            vk (Tuple[poly_t, falcon_pkenc]): The public verification key of the issuer.
             z_bytes (bytes): The signature on the batch commitment.
             idx (int): The index of the message to obtain the signature on.
 
         Returns:
-            bytes: The signature on the commitment.
+            [bytes, bytes]: The proofs for commitment and signature.
         """
+        rho, s1, s2 = bytes(64), poly_t(Rq), poly_t(Rq)
+        
         # decode the signature
         print("Decoding signature from raw bytestream ...")
         try:
             coder = coder_t()
             coder.dec_begin(z_bytes)
-            coder.dec_bytes(z_bytes)
+            coder.dec_bytes(rho)
+            coder.dec_grandom(165, s1)
+            coder.dec_grandom(165, s2)
             coder.dec_end()
         except DecodingError:
             raise ValueError("[ERR] decoder failed")
 
         print("[OK] decoded successfully")
-        
 
+        r = poly_t(Rq, rho)
 
-        return z_bytes
+        # # extract the issuer's verification key
+        b, a = vk[0], falcon_decode_pk(vk[1])
+
+        print(f"Generating ZK proof of valid signature on commitment ...")
+        start_time = time.time()
+
+        # set the rest of the A matrix
+        # A_SIG.set_submatrix(0, 2 * n, -a)
+        A_SIG.set_elem(-a, 0, 2 * n + 1)
+        A_SIG.set_elem(-b, 0, 2 * n + 2)
+
+        # create witness vector
+        w = polyvec_t(Rq, 2 * n + 3, [self.__h, self.__x, s1, s2, r])
+
+        # test = A_SIG * w + t_SIG
+        # print(test.print()) # this should output a vector of zero polynomials
+
+        self.p2_prover.set_statement(A_SIG, t_SIG)
+        self.p2_prover.set_witness(w)
+
+        self.π_SIG = self.p2_prover.prove()
+        proof_time = time.time() - start_time
+        print(f"[OK] completed in: {proof_time:.3f} s | size: {len(self.π_SIG) / 1024:.3f} KB")
+
+        return (self.π_COM[idx], self.π_SIG)
 
 class issuer:
     """
@@ -209,9 +239,16 @@ class issuer:
 
     def __init__(self):
         # instantiate the FALCON key pair
-        self.sk, self.vk, _ = falcon_keygen()
+        self.sk, vk, _ = falcon_keygen()
+
+        # the rOM-ISIS polynomial
+        b = poly_t(Rq)
+        b.urandom_bnd(-int((q-1)/2), int((q-1)/2), SIGPP, 0)
+
+        self.vk = (b, vk)
+
     
-    def get_falcon_vk(self) -> falcon_pkenc:
+    def get_falcon_vk(self) -> Tuple[poly_t, falcon_pkenc]:
         """
         Returns:
             falcon_pkenc: The public verification key of the issuer.
@@ -242,16 +279,15 @@ class issuer:
             raise ValueError("[ERR] decoder failed")
         
         print("[OK] decoded successfully")
-        
+
         # internal coins
         rho = secrets.token_bytes(64)
-        r = poly_t(Rq)
 
         # sign the commitment
         print("Signing the commitment ...")
         start_time = time.time()
-        r.urandom_bnd(0, 1, rho, 0) # the rOM-ISIS randomness
-        s1, s2 = falcon_preimage_sample(self.sk, c - b * r)
+        r = poly_t(Rq, rho) # the rOM-ISIS randomness
+        s1, s2 = falcon_preimage_sample(self.sk, c - self.vk[0] * r)
         sign_time = time.time() - start_time
         print(f"[OK] completed in: {sign_time * 1000:.3f} ms")
 
@@ -300,15 +336,26 @@ def main():
     # create the client
     cli = client(µ, L, R)
 
+    # print('-------------------[ Setup ]-------------------')
+
     # create the issuer and get the FALCON verification key
     iss = issuer()
     iss_vk = iss.get_falcon_vk()
     
+    print('\n-------------------[ Blind ]-------------------')
+
     # create the client query
     cli_COM = cli.client_query(precompute=True)
 
+    print('\n-------------------[ BSign ]-------------------')
+
     # issue the signature
     iss_sig = iss.issue(cli_COM)
+
+    print('\n--------------[ Unblind (online) ]--------------')
+
+    # obtain the final message and signature pair for the first message
+    π_COM, π_SIG = cli.client_obtain(iss_vk, iss_sig, 0)
 
 if __name__ == "__main__":
     main()

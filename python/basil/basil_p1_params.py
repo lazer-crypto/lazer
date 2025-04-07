@@ -9,15 +9,15 @@ from math import log, ceil
 #      2.1 has binary coefficients only
 #      2.2 satisfies an l2-norm bound
 
-vname = "p1_param"                 # variable name
+vname = "p1_param"                                      # variable name
 
 deg   = 512                                             # ring Rq degree d
-mod   = 7213                                            # ring Rq modulus q
+mod   = 12289                                           # ring Rq modulus q
 B     = 4                                               # batch size: number of messages
 alpha = 2                                               # arity of the Merkle tree"
 m     = 1                                               # dimension of the commited vectors
 n     = ceil(m * log(mod, 2))                           # column dimension of L, R
-dim   = (m, 3 * n)              # dimension of A
+dim   = (m, 3 * n)                                      # dimension of A
 
 wpart = [   
             list(range(0, n)),                  # partition of w
@@ -31,5 +31,5 @@ wbin  = [ 1, 1, 1 ]  # binary coeffs
 # Optional: some linf-norm bound on x.
 # Tighter bounds result in smaller proofs.
 # If not specified, the default is the naive bound max(1,floor(max(wl2))).
-# wlinf = tau
+# wlinf = 1
 
