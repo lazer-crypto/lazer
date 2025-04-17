@@ -11,40 +11,37 @@ if len(sys.argv) > 1:
 
 cdefs_labrador = """
 
-typedef struct
-{
+typedef struct _PREFIXwitness{
   ...;
-}PREFIXsmplstmnt;
+} PREFIXwitness[1];
 
-typedef struct
-{
+typedef struct _PREFIXstatement{
   ...;
-}PREFIXwitness;
-typedef PREFIXwitness PREFIXwitness_t[1];
+} PREFIXstatement[1];
 
-typedef struct
-{
+typedef struct _PREFIXdch_pack_proof{
   ...;
-}PREFIXcommitment;
+} PREFIXdch_pack_proof[1];
 
-typedef struct
-{
+typedef struct _PREFIXdch_pack_params{
   ...;
-}PREFIXcomposite;
+} PREFIXdch_pack_params[1];
 
-void PREFIXinit_witness_raw(PREFIXwitness *wt, size_t r, size_t n[]);
-int PREFIXset_witness_vector_raw(PREFIXwitness *wt, size_t i, size_t n, size_t deg, const int64_t s[]);
-void PREFIXinit_smplstmnt_raw(PREFIXsmplstmnt *st, size_t r, size_t n[], uint64_t betasq[], size_t k);
-int PREFIXset_smplstmnt_lincnst_raw(PREFIXsmplstmnt *st, size_t i, size_t nz, size_t idx[], size_t n[], size_t deg, int64_t *phi, int64_t *b);
-int PREFIXsimple_verify(const PREFIXsmplstmnt *st, const PREFIXwitness *wt);
-int PREFIXcomposite_prove_simple(PREFIXcomposite *proof, PREFIXcommitment *com, const PREFIXsmplstmnt *st, const PREFIXwitness *wt);
-int PREFIXcomposite_verify_simple(const PREFIXcomposite *proof, const PREFIXcommitment *com, const PREFIXsmplstmnt *st);
-void PREFIXinit_comkey(size_t n);
-void PREFIXfree_comkey();
-void PREFIXfree_commitment(PREFIXcommitment *com);
-void PREFIXfree_witness(PREFIXwitness *wt);
-void PREFIXfree_composite(PREFIXcomposite *proof);
-void PREFIXfree_smplstmnt(PREFIXsmplstmnt *st);
+void PREFIXpy_init_witness(PREFIXwitness wt, size_t r, size_t n[]);
+int PREFIXpy_set_witness_vector(PREFIXwitness wt, size_t idx, size_t n, size_t deg, const int64_t s[]);
+int PREFIXpy_print_witness_vector(PREFIXwitness wt, size_t idx);
+void PREFIXpy_init_statement(PREFIXstatement st, size_t r, size_t n[], uint64_t normsq[], uint64_t normsq_req[], int normty[], size_t num_rq_cnst, size_t num_zq_cnst, size_t num_int_cnst);
+int PREFIXpy_append_constraint(PREFIXstatement st, size_t nvec, const size_t idx[], const size_t n[], size_t deg, int64_t *phi, int64_t *b, int full);
+int PREFIXpy_append_quadratic(PREFIXstatement st, size_t nlin, size_t nprod, const size_t idx_lin[], const size_t idx_prod1[], const size_t idx_prod2[], const size_t len_phi[], size_t deg, int64_t *a, int64_t *phi, int64_t *b);
+int PREFIXpy_append_deg0_constraint(PREFIXstatement st, size_t idx, size_t deg);
+int PREFIXpy_gen_params(PREFIXdch_pack_params pp, const PREFIXstatement ist, int zk, int debug);
+int PREFIXpy_simple_verify(const PREFIXstatement st, const PREFIXwitness wt);
+void PREFIXpy_prove(PREFIXdch_pack_proof pi, const PREFIXstatement ist, const PREFIXwitness iwt, const PREFIXdch_pack_params pp);
+int PREFIXpy_verify(const PREFIXstatement ist, const PREFIXdch_pack_params pp, const PREFIXdch_pack_proof pi);
+void PREFIXpy_free_witness(PREFIXwitness wt);
+void PREFIXpy_free_statement(PREFIXstatement st);
+void PREFIXpy_free_params(PREFIXdch_pack_params pp);
+void PREFIXpy_free_proof(PREFIXdch_pack_proof pi);
 """
 
 cdefs_lazer = """
@@ -392,39 +389,74 @@ static const modulus_srcptr moduli_d128[];
 """
 
 
+cdefs_hash = """
+typedef uint64_t poly512[512];
+typedef int64_t signed_poly512[512];
+
+void absorb(poly512 image[8], signed_poly512 cutoff, poly512 left_input[8], poly512 right_input[8]);
+void mix_256(poly512 image_decomposed[8], signed_poly512 cutoff, poly512 input[9], int shift_index);
+void mix_257(poly512 image_decomposed[9], signed_poly512 cutoff, poly512 input[8]);
+void squeeze(poly512 image_decomposed[8], signed_poly512 cutoff, poly512 input[2]);
+void decomposition_binary_power(signed_poly512 output[2], signed_poly512 input, int exp, int loops);
+void compute_cutoff_parent_node(signed_poly512 cutoff, poly512 child_node[8], poly512 sibling[8], int path, signed_poly512 delta, poly512 parent_node[8]);
+void compute_delta(signed_poly512 image, signed_poly512 cutoff, poly512 left_input[8], poly512 right_input[8]);
+"""
+
+source_hash = """
+#ifndef INCLUDE_H
+#define INCLUDE_H
+
+#include <stdint.h>
+
+#define DEGREE 512
+
+typedef uint64_t poly512[DEGREE];
+typedef int64_t signed_poly512[DEGREE];
+
+void absorb(poly512 image[8], signed_poly512 cutoff, poly512 left_input[8], poly512 right_input[8]);
+void mix_256(poly512 image_decomposed[8], signed_poly512 cutoff, poly512 input[9], int shift_index);
+void mix_257(poly512 image_decomposed[9], signed_poly512 cutoff, poly512 input[8]);
+void squeeze(poly512 image_decomposed[8], signed_poly512 cutoff, poly512 input[2]);
+void decomposition_binary_power(signed_poly512 output[2], signed_poly512 input, int exp, int loops);
+void compute_cutoff_parent_node(signed_poly512 cutoff, poly512 child_node[8], poly512 sibling[8], int path, signed_poly512 delta, poly512 parent_node[8]);
+void compute_delta(signed_poly512 image, signed_poly512 cutoff, poly512 left_input[8], poly512 right_input[8]);
+#endif // INCLUDE_H
+"""
+
+
 includedirs = [prefix]
 # XXX get hexl path from build system
-libdirs = [prefix, f"{prefix}/third_party/hexl-development/build/hexl/lib/", f"{prefix}/third_party/hexl-development/build/hexl/lib64/"]
+libdirs = [prefix, f"{prefix}/third_party/hexl-development/build/hexl/lib/", f"{prefix}/third_party/hexl-development/build/hexl/lib64/",f"{prefix}/src/lattice-hash"]
 runtimelibdirs = [prefix, f"{prefix}/third_party/hexl-development/build/hexl/lib/", f"{prefix}/third_party/hexl-development/build/hexl/lib64/"]
 libs_lazer = ['lazer', 'hexl', 'mpfr', 'gmp', 'm', 'stdc++']
 source_lazer = """
 #include "lazer.h"
 """
 source_labrador = """
-#include "src/labradorLOGQ_py.h"
+#include "src/labradosLOGQ_py.h"
 """
 
 cdefs = cdefs_lazer
 source = source_lazer
 libs = libs_lazer
 
-if os.path.isfile('../liblabrador24.so'):
-   cdefs += cdefs_labrador.replace("PREFIX","labrador24_")
-   source += source_labrador.replace("LOGQ","24")
-   libs += ['labrador24']
 if os.path.isfile('../liblabrador32.so'):
    cdefs += cdefs_labrador.replace("PREFIX","labrador32_")
    source += source_labrador.replace("LOGQ","32")
    libs += ['labrador32']
-if os.path.isfile('../liblabrador40.so'):
-   cdefs += cdefs_labrador.replace("PREFIX","labrador40_")
-   source += source_labrador.replace("LOGQ","40")
-   libs += ['labrador40']
-if os.path.isfile('../liblabrador48.so'):
-   cdefs += cdefs_labrador.replace("PREFIX","labrador48_")
-   source += source_labrador.replace("LOGQ","48")
-   libs += ['labrador48']
+if os.path.isfile('../liblabrador36.so'):
+   cdefs += cdefs_labrador.replace("PREFIX","labrador36_")
+   source += source_labrador.replace("LOGQ","36")
+   libs += ['labrador36']
+if os.path.isfile('../liblabrador38.so'):
+   cdefs += cdefs_labrador.replace("PREFIX","labrador38_")
+   source += source_labrador.replace("LOGQ","38")
+   libs += ['labrador38']
 
+if os.path.isfile('../libhash.so'):
+   cdefs += cdefs_hash
+   source += source_hash
+   libs = ['hash', 'hexl_wrapper'] + libs
 
 ffibuilder = cffi.FFI()
 ffibuilder.cdef(cdefs)

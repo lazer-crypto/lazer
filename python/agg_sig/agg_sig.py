@@ -1,33 +1,38 @@
+"""
+    Aggregate Falcon signatures. The norm of each half of the signature is
+    proven separately. The norm of the liftings is proven approximately.
+"""
+import sys
+sys.path.append('..')
 from lazer import *
 from lazer import _invmod, _center_list, _l2sq_list
-from labrador import *
+from labrados import *
 import hashlib      # for SHAKE128
-import secrets      # for internal coins
-import sys
 import time
 
 
-VBIG=0 # counts how many signatures are too big
+REJ=0 # counts how many signatures are too big
 
-#Total Signatures
-sig_num=200
+# Signature number and norms
+sig_num=2**10
 norms=[17017363,17017363,round(1248245003*.75)]
+lift_normsq_guarantee=2**44
+approx_list=[(3*i+2, lift_normsq_guarantee) for i in range(sig_num)]
 
-#Falcon parameters
+# Falcon parameters
 mod=12289
 deg=512
 
 # falcon ring
 FALCON_RING=polyring_t(deg,mod)
-BIGMOD_RING=polyring_t(deg,LAB_RING_40.mod)
+BIGMOD_RING=polyring_t(deg,LAB_RING_38.mod)
 PRIMESIZE=str(math.ceil(math.log2(BIGMOD_RING.mod)))
 
-#use the same sk/pk falcon key to save time on key generation
-# makes no difference for the ZK benchmark
+# use the same sk/pk falcon key to save time on key generation
+# makes no difference for the benchmark
 SAME_KEY=1
 
 ID=int_to_poly(1,BIGMOD_RING)
-
 
 # public randomness
 shake128 = hashlib.shake_128(bytes.fromhex("00"))
@@ -35,11 +40,17 @@ TARGPP = shake128.digest(32)
 
 inv_fal_mod=_invmod(mod,BIGMOD_RING.mod)
 
+# statement parameters
 deg_list=[deg]*(3*sig_num)
 num_pols_list=[1]*(3*sig_num)
 norm_list=norms*sig_num
 num_constraints=sig_num
-PS=proof_statement(deg_list,num_pols_list,norm_list,num_constraints,PRIMESIZE)
+PS=proof_statement(deg_list,num_pols_list,norm_list,num_constraints,PRIMESIZE,approx_norm_list=approx_list)
+
+# the assertion below makes sure that the Falcon equation we are trying to prove 
+# does not wrap around the labrador modulus - i.e. we're proving it over the integers
+assert mod//2 * math.sqrt(deg) * math.sqrt(norms[1]) + math.sqrt(norms[0]) \
+     + mod * math.sqrt(lift_normsq_guarantee) + mod//2 < BIGMOD_RING.mod
 
 keytime_start=time.perf_counter()
 if SAME_KEY:
@@ -78,16 +89,13 @@ while j<sig_num:
 
     if l_s1.l2sq()<norms[0] and l_s2.l2sq()<norms[1] and v.l2sq() < norms[2]:
         assert l_s1.linf()<2**14 and l_s2.linf()<2**14 and v.linf()<2**14
-        # the below makes sure that the equation we are trying to prove does not wrap around the labrador modulus - i.e. we're proving it over the integers
-        assert math.sqrt(l_pk.l2sq())*math.sqrt(norms[1])+math.sqrt(norms[0])+mod*math.sqrt(norms[2]) < BIGMOD_RING.mod //2
         stat_left=[l_pk,ID,ID*mod]
         wit=[l_s2,l_s1,v]
         PS.fresh_statement(stat_left,wit,l_t)
         j+=1
     else:
         print("Too BIG in ",j)
-        print(v.l2sq() < norms[2])
-        VBIG+=1
+        REJ+=1
 
 sig_end=time.perf_counter()
 
@@ -105,4 +113,3 @@ print("Key creation: ",keytime_end-keytime_start)
 print("Signature creation: ",sig_end-sig_start)
 print("Proof Time: ",prove_end-prove_start)
 print("Verification Time: ",ver_end-ver_start)
-#print(VBIG)

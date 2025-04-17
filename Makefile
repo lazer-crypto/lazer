@@ -181,195 +181,88 @@ $(HEXL_DIR): $(HEXL_ZIP)
 #	cd $(HEXL_DIR) && cmake -S . -B build -DHEXL_SHARED_LIB=ON
 #	cd $(HEXL_DIR) && cmake --build build
 
+#### lib hash 
+
+
+HASH_DIR = src/lattice-hash
+HASH_INC = \
+	$(HASH_DIR)/src/data.h \
+	$(HASH_DIR)/src/hash.h
+HASH_SRC = $(HASH_DIR)/src/hash.c
+
+libhash.so: $(HASH_INC) $(HASH_SRC) src/hexl_shared.o libhexl_wrapper.so
+	$(CC) $(CFLAGS) -I$(HASH_DIR)/src -I$(HEXL_DIR)/hexl/include -fPIC -shared -o $@ $(HASH_SRC) $(LIBS) libhexl_wrapper.so src/hexl_shared.o
+
+libhexl_wrapper.so: $(HASH_DIR)/src/hexl_wrapper.cpp
+	 $(CC) $(CFLAGS) -I$(HASH_DIR)/src -I$(HEXL_DIR)/hexl/include -fPIC -shared -o $@ $< src/hexl_shared.o
 
 #### lib labrador
 
-LABRADOR_CFLAGS = -std=gnu18 -Wall -Wextra -Wmissing-prototypes -Wredundant-decls \
-  -Wshadow -Wpointer-arith -Wno-unused-function -fmax-errors=1 -flto=auto -fwrapv \
-  -march=native -mtune=native -O3 -fvisibility=hidden
+LABRADOR_CFLAGS = -std=gnu2x -Wall -Wextra -Wmissing-prototypes -Wredundant-decls \
+  -Wshadow -Wpointer-arith -Wno-unused-function -fmax-errors=1 -flto=auto \
+  -fwrapv -ffast-math -march=native -mtune=native -O3 -DNDEBUG -fvisibility=hidden 
+LABRADOR_LIBS = -lmvec -lm
 
-LABRADOR_DIR = src/labrador
-LABRADOR_OBJ_STATIC = \
-	$(LABRADOR_DIR)/greyhound_static.o \
-	$(LABRADOR_DIR)/dachshund_static.o \
-	$(LABRADOR_DIR)/chihuahua_static.o \
-	$(LABRADOR_DIR)/labrador_static.o \
-	$(LABRADOR_DIR)/data_static.o \
-	$(LABRADOR_DIR)/jlproj_static.o \
-	$(LABRADOR_DIR)/polx_static.o \
-	$(LABRADOR_DIR)/poly_static.o \
-	$(LABRADOR_DIR)/polz_static.o \
-	$(LABRADOR_DIR)/ntt_static.o \
-	$(LABRADOR_DIR)/invntt_static.o \
-	$(LABRADOR_DIR)/aesctr_static.o \
-	$(LABRADOR_DIR)/fips202_static.o \
-	$(LABRADOR_DIR)/randombytes_static.o \
-	$(LABRADOR_DIR)/cpucycles_static.o \
-	$(LABRADOR_DIR)/sparsemat_static.o
-LABRADOR_OBJ_SHARED = \
-	$(LABRADOR_DIR)/greyhound_shared.o \
-	$(LABRADOR_DIR)/dachshund_shared.o \
-	$(LABRADOR_DIR)/chihuahua_shared.o \
-	$(LABRADOR_DIR)/labrador_shared.o \
-	$(LABRADOR_DIR)/data_shared.o \
-	$(LABRADOR_DIR)/jlproj_shared.o \
-	$(LABRADOR_DIR)/polx_shared.o \
-	$(LABRADOR_DIR)/poly_shared.o \
-	$(LABRADOR_DIR)/polz_shared.o \
-	$(LABRADOR_DIR)/ntt_shared.o \
-	$(LABRADOR_DIR)/invntt_shared.o \
-	$(LABRADOR_DIR)/aesctr_shared.o \
-	$(LABRADOR_DIR)/fips202_shared.o \
-	$(LABRADOR_DIR)/randombytes_shared.o \
-	$(LABRADOR_DIR)/cpucycles_shared.o \
-	$(LABRADOR_DIR)/sparsemat_shared.o
+LABRADOR_DIR = src/labrados
 LABRADOR_INC = \
-	$(LABRADOR_DIR)/greyhound.h \
+	$(LABRADOR_DIR)/aesctr.h \
+	$(LABRADOR_DIR)/comkey.h \
+	$(LABRADOR_DIR)/constraints.h\
+	$(LABRADOR_DIR)/cpucycles.h \
 	$(LABRADOR_DIR)/dachshund.h \
-	$(LABRADOR_DIR)/pack.h\
-	$(LABRADOR_DIR)/chihuahua.h \
-	$(LABRADOR_DIR)/labrador.h \
 	$(LABRADOR_DIR)/data.h \
+	$(LABRADOR_DIR)/fips202.h \
+	$(LABRADOR_DIR)/gaussian.h \
 	$(LABRADOR_DIR)/jlproj.h \
+	$(LABRADOR_DIR)/labradoodle.h \
+	$(LABRADOR_DIR)/labrador_core.h \
+	$(LABRADOR_DIR)/labrador_tail.h \
+	$(LABRADOR_DIR)/labrador.h \
+	$(LABRADOR_DIR)/lnp.h \
+	$(LABRADOR_DIR)/pack.h \
 	$(LABRADOR_DIR)/polx.h \
 	$(LABRADOR_DIR)/poly.h \
 	$(LABRADOR_DIR)/polz.h \
-	$(LABRADOR_DIR)/fq.inc \
-	$(LABRADOR_DIR)/shuffle.inc \
-	$(LABRADOR_DIR)/aesctr.h \
-	$(LABRADOR_DIR)/fips202.h \
+	$(LABRADOR_DIR)/proofsystem.h \
 	$(LABRADOR_DIR)/randombytes.h \
-	$(LABRADOR_DIR)/cpucycles.h \
-	$(LABRADOR_DIR)/sparsemat.h
+	$(LABRADOR_DIR)/rejection.h \
+	$(LABRADOR_DIR)/malloc.h \
+	$(LABRADOR_DIR)/labrados_python.h \
+	$(LABRADOR_DIR)/timing.h
 LABRADOR_SRC = \
-	$(LABRADOR_DIR)/greyhound.c \
+	$(LABRADOR_DIR)/aesctr.c \
+	$(LABRADOR_DIR)/comkey.c \
+	$(LABRADOR_DIR)/constraints.c\
+	$(LABRADOR_DIR)/cpucycles.c \
 	$(LABRADOR_DIR)/dachshund.c \
-	$(LABRADOR_DIR)/pack.c \
-	$(LABRADOR_DIR)/chihuahua.c \
-	$(LABRADOR_DIR)/labrador.c \
 	$(LABRADOR_DIR)/data.c \
+	$(LABRADOR_DIR)/fips202.c \
+	$(LABRADOR_DIR)/gaussian.c \
 	$(LABRADOR_DIR)/jlproj.c \
+	$(LABRADOR_DIR)/labradoodle.c \
+	$(LABRADOR_DIR)/labrador_core.c \
+	$(LABRADOR_DIR)/labrador_tail.c \
+	$(LABRADOR_DIR)/labrador.c \
+	$(LABRADOR_DIR)/lnp.c \
+	$(LABRADOR_DIR)/ntt.c \
+	$(LABRADOR_DIR)/pack.c \
 	$(LABRADOR_DIR)/polx.c \
 	$(LABRADOR_DIR)/poly.c \
 	$(LABRADOR_DIR)/polz.c \
-	$(LABRADOR_DIR)/ntt.S \
-	$(LABRADOR_DIR)/invntt.S \
-	$(LABRADOR_DIR)/aesctr.c \
-	$(LABRADOR_DIR)/fips202.c\
+	$(LABRADOR_DIR)/proofsystem.c \
 	$(LABRADOR_DIR)/randombytes.c \
-	$(LABRADOR_DIR)/cpucycles.c \
-	$(LABRADOR_DIR)/sparsemat.c
-
-liblabrador24.so: $(LABRADOR_SRC) $(LABRADOR_INC)
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR) -DLOGQ=24 -shared -fvisibility=hidden -fPIC -o liblabrador24.so $(LABRADOR_SRC)
+	$(LABRADOR_DIR)/rejection.c \
+	$(LABRADOR_DIR)/labrados_python.c \
+	$(LABRADOR_DIR)/timing.c
 
 liblabrador32.so: $(LABRADOR_SRC) $(LABRADOR_INC)
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR) -DLOGQ=32 -shared -fvisibility=hidden -fPIC -o liblabrador32.so $(LABRADOR_SRC)
+	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR) -DLOGQ=32 -shared -fvisibility=hidden -fPIC -o liblabrador32.so $(LABRADOR_SRC) $(LABRADOR_LIBS)
 
-liblabrador40.so: $(LABRADOR_SRC) $(LABRADOR_INC)
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR) -DLOGQ=40 -shared -fvisibility=hidden -fPIC -o liblabrador40.so $(LABRADOR_SRC)
+liblabrador36.so: $(LABRADOR_SRC) $(LABRADOR_INC)
+	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR) -DLOGQ=36 -shared -fvisibility=hidden -fPIC -o liblabrador36.so $(LABRADOR_SRC) $(LABRADOR_LIBS)
 
-liblabrador48.so: $(LABRADOR_SRC) $(LABRADOR_INC)
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR) -DLOGQ=48 -shared -fvisibility=hidden -fPIC -o liblabrador48.so $(LABRADOR_SRC)
-
-
-$(LABRADOR_DIR)/greyhound_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/greyhound.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR) -c -o $(LABRADOR_DIR)/greyhound_static.o $(LABRADOR_DIR)/greyhound.c
-
-$(LABRADOR_DIR)/dachshund_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/dachshund.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/dachshund_static.o $(LABRADOR_DIR)/dachshund.c
-
-$(LABRADOR_DIR)/chihuahua_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/chihuahua.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/chihuahua_static.o $(LABRADOR_DIR)/chihuahua.c
-
-$(LABRADOR_DIR)/labrador_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/labrador.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/labrador_static.o $(LABRADOR_DIR)/labrador.c
-
-$(LABRADOR_DIR)/data_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/data.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/data_static.o $(LABRADOR_DIR)/data.c
-
-$(LABRADOR_DIR)/jlproj_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/jlproj.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/jlproj_static.o $(LABRADOR_DIR)/jlproj.c
-
-$(LABRADOR_DIR)/polx_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/polx.c
-	$(CC) $(LABRADOR_CFLAGS -I$(LABRADOR_DIR) ) -c -o $(LABRADOR_DIR)/polx_static.o $(LABRADOR_DIR)/polx.c
-
-$(LABRADOR_DIR)/poly_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/poly.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/poly_static.o $(LABRADOR_DIR)/poly.c
-
-$(LABRADOR_DIR)/polz_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/polz.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/polz_static.o $(LABRADOR_DIR)/polz.c
-
-$(LABRADOR_DIR)/ntt_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/ntt.S
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/ntt_static.o $(LABRADOR_DIR)/ntt.S
-
-$(LABRADOR_DIR)/invntt_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/invntt.S
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/invntt_static.o $(LABRADOR_DIR)/invntt.S
-
-$(LABRADOR_DIR)/aesctr_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/aesctr.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/aesctr_static.o $(LABRADOR_DIR)/aesctr.c
-
-$(LABRADOR_DIR)/fips202_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/fips202.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/fips202_static.o $(LABRADOR_DIR)/fips202.c
-
-$(LABRADOR_DIR)/randombytes_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/randombytes.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/randombytes_static.o $(LABRADOR_DIR)/randombytes.c
-
-$(LABRADOR_DIR)/cpucycles_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/cpucycles.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/cpucycles_static.o $(LABRADOR_DIR)/cpucycles.c
-
-$(LABRADOR_DIR)/sparsemat_static.o: $(LABRADOR_INC) $(LABRADOR_DIR)/sparsemat.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -o $(LABRADOR_DIR)/sparsemat_static.o $(LABRADOR_DIR)/sparsemat.c
-
-
-
-$(LABRADOR_DIR)/greyhound_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/greyhound.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/greyhound_shared.o $(LABRADOR_DIR)/greyhound.c
-
-$(LABRADOR_DIR)/dachshund_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/dachshund.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/dachshund_shared.o $(LABRADOR_DIR)/dachshund.c
-
-$(LABRADOR_DIR)/chihuahua_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/chihuahua.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/chihuahua_shared.o $(LABRADOR_DIR)/chihuahua.c
-
-$(LABRADOR_DIR)/labrador_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/labrador.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/labrador_shared.o $(LABRADOR_DIR)/labrador.c
-
-$(LABRADOR_DIR)/data_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/data.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/data_shared.o $(LABRADOR_DIR)/data.c
-
-$(LABRADOR_DIR)/jlproj_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/jlproj.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/jlproj_shared.o $(LABRADOR_DIR)/jlproj.c
-
-$(LABRADOR_DIR)/polx_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/polx.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/polx_shared.o $(LABRADOR_DIR)/polx.c
-
-$(LABRADOR_DIR)/poly_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/poly.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/poly_shared.o $(LABRADOR_DIR)/poly.c
-
-$(LABRADOR_DIR)/polz_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/polz.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/polz_shared.o $(LABRADOR_DIR)/polz.c
-
-$(LABRADOR_DIR)/ntt_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/ntt.S
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/ntt_shared.o $(LABRADOR_DIR)/ntt.S
-
-$(LABRADOR_DIR)/invntt_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/invntt.S
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/invntt_shared.o $(LABRADOR_DIR)/invntt.S
-
-$(LABRADOR_DIR)/aesctr_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/aesctr.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/aesctr_shared.o $(LABRADOR_DIR)/aesctr.c
-
-$(LABRADOR_DIR)/fips202_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/fips202.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/fips202_shared.o $(LABRADOR_DIR)/fips202.c
-
-$(LABRADOR_DIR)/randombytes_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/randombytes.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/randombytes_shared.o $(LABRADOR_DIR)/randombytes.c
-
-$(LABRADOR_DIR)/cpucycles_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/cpucycles.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/cpucycles_shared.o $(LABRADOR_DIR)/cpucycles.c
-
-$(LABRADOR_DIR)/sparsemat_shared.o: $(LABRADOR_INC) $(LABRADOR_DIR)/sparsemat.c
-	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR)  -c -fPIC -o $(LABRADOR_DIR)/sparsemat_shared.o $(LABRADOR_DIR)/sparsemat.c
+liblabrador38.so: $(LABRADOR_SRC) $(LABRADOR_INC)
+	$(CC) $(LABRADOR_CFLAGS) -I$(LABRADOR_DIR) -DLOGQ=38 -shared -fvisibility=hidden -fPIC -o liblabrador38.so $(LABRADOR_SRC) $(LABRADOR_LIBS)
 
 
 #### lib lazer
@@ -473,8 +366,8 @@ TEXSOURCES = \
 lib-all: lazer.h lib-static-all lib-shared-all
 lib: lazer.h lib-static lib-shared
 
-lib-shared-all: lazer.h liblazer.so liblabrador24.so liblabrador32.so liblabrador40.so liblabrador48.so
-lib-shared: lazer.h liblazer.so
+lib-shared-all: lazer.h liblazer.so liblabrador32.so liblabrador36.so liblabrador38.so libhash.so
+lib-shared: lazer.h liblazer.so libhash.so
 lib-static-all: lazer.h liblazer.a
 lib-static: lazer.h liblazer.a
 
@@ -624,10 +517,10 @@ doc/html/index.html: $(TEXSOURCES) doc/pdf/lazer_manual.pdf # rely on latexmk fo
 
 .PHONY: html
 clean:
-	rm -f lazer.h liblazer.a liblazer.so liblabrador.a liblabrador.so liblabrador24.so  liblabrador32.so  liblabrador40.so  liblabrador48.so
+	rm -f lazer.h liblazer.a liblazer.so liblabrador.a liblabrador.so  liblabrador32.so  liblabrador36.so  liblabrador38.so  libhash.so libhexl_wrapper.so
 	cd scripts && rm -f moduli.sage.py lnp-codegen.sage.py abdlop-codegen.sage.py lnp-quad-codegen.sage.py lnp-quad-eval-codegen.sage.py lnp-tbox-codegen.sage.py lin-codegen.sage.py
 	cd src && rm -f *.o
-	cd src/labrador && rm -f *.o
+	cd src/labrados && rm -f *.o
 	cd $(THIRD_PARTY_DIR) && rm -rf $(FALCON_SUBDIR)
 	cd $(THIRD_PARTY_DIR) && rm -rf $(HEXL_SUBDIR)
 	cd tests && rm -f *.o *.dSYM && cd .. && rm -f $(TESTS) && rm -f sage-test.sage.py

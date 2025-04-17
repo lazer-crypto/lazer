@@ -412,7 +412,7 @@ class poly_t:
                 if int, then sets the coefficient pos to this integer
             pos (int, optional): If coeffs is an int, then pos corresponds to the position that should be set
         """
-        assert isinstance(coeffs, (list, dict))
+        assert isinstance(coeffs, (list, dict, int))
 
         if isinstance(coeffs, (dict)):
             for i in coeffs:
@@ -424,8 +424,7 @@ class poly_t:
             # if the vector is single precision (< 63 bits), then use pointers to set
             if max([abs(ele) for ele in coeffs])<MAX_SINGLE:
                 pnc=ffi.new("int64_t[]",self.ring.deg)
-                for i in range(self.ring.deg):
-                    pnc[i]=coeffs[i]
+                pnc[0:self.ring.deg]=coeffs[:]
                 lib.poly_set_coeffvec_i64(self.ptr,pnc)
             else: # otherwise, be inefficient and set coefficients one at a time
                 for i in range(self.ring.deg):
@@ -435,7 +434,7 @@ class poly_t:
         if type(coeffs) is int:
             assert pos != None
             coeff=int_t(coeffs, self.ring.mod_nlimbs)
-            lib.poly_set_coeff(self.ptr, i, coeff.ptr)
+            lib.poly_set_coeff(self.ptr, pos, coeff.ptr)
 
     def get_coeff(self,pos):
         """Returns the coefficient at a given position
@@ -489,19 +488,19 @@ class poly_t:
         else:
             return res
 
-    def to_list(self):
+    def to_list(self, in64bits=False):
         """Returns a list of the coefficients of the polynomial
 
+        Args:
+            in64bits (bool, optional): can be set to True if all the coefficients are guaranteed to be in 64 bits
+        
         Returns:
             list: the coefficients of the polynomial
         """
-        if self.linf()<MAX_SINGLE: # each of the coefficients fits in 1 limb
+        if in64bits or self.linf()<MAX_SINGLE: # each of the coefficients fits in 1 limb
             pnl=ffi.new("int64_t []",self.ring.deg)
             lib.poly_get_coeffvec_i64(pnl, self.ptr)
-            l=[]
-            for i in range(self.ring.deg):
-                l.append(pnl[i])
-            return l
+            return list(pnl)
         else: # be inefficient and use .get_coeff
             l=[]
             for i in range(self.ring.deg):

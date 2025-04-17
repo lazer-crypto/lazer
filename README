@@ -33,11 +33,19 @@ connection are required.
 
 Building the library
 --------------------
+To reproduce the results from the paper "The LaZer Library: Lattice-Based Zero Knowledge and Succinct Proofs for Quantum-Safe Privacy", check out commit
+`10eafeca4cd53ff4fc54193dce904dbd0026fefd`.
+
+To reproduce the results from the paper "A Toolkit for Succinct Lattice-Based Zero Knowledge Proofs", check out commit
+`f6c10cbe315d8cc3d86e0b2f13c80b1775a5af38`.
+
 To build the lazer C library, from the base directory, run:
 
-`make all`
+`git submodule update --init --recursive`
 
-Optional: use make's `-j` option to speed up compilation.
+to clone Labrador's repository and
+
+`make all`
 
 To build lazer's python module, change to the `python` subdirectory and run:
 
@@ -45,6 +53,11 @@ To build lazer's python module, change to the `python` subdirectory and run:
 
 (If this step fails, check that the python development package is installed.)
 
+Now continue with the section corresponding to the commit you chose in the beginning.
+
+
+The LaZer Library: Lattice-Based Zero Knowledge and Succinct Proofs for Quantum-Safe Privacy
+============================================================================================
 
 Building and viewing the documentation
 --------------------------------------
@@ -127,5 +140,31 @@ Instructions for artifact evaluation and result reproduction
 6. The code for the aggregate signature from section 6.3 is available as a runnable demo in `python/agg_sig.py`.
 7. Detailed descriptions of the demos are in the documentation.
 8. If you want to do anything beyond verifying the paper's results, check out the documentation of the python module's interface.
+
+
+A Toolkit for Succinct Lattice-Based Zero Knowledge Proofs
+==========================================================
+
+Building the benchmarks
+------------------------
+To build the benchmarks, change to the `python/succinct_zkp` subdirectory and run `make`:
+
+`cd python/succinct_zkp`
+
+`make`
+
+Instructions for artifact evaluation and result reproduction
+------------------------------------------------------------
+
+1.   Set up a system that meets the dependencies decribed above.
+2.   Download and build the library as described above.
+3.   Build the benchmarks as described above.
+4.   Run the following benchmarks from the `python/succinct_zkp` subdirectory:
+     - `python3 benchmark_expansion.py` (corresponds to Table 1)
+     - `python3 benchmark_compression.py` (corresponds to Table 2)
+     - `python3 benchmark_membership_proof.py` (corresponds to Table 3)
+     - `python3 benchmark_blind_sign.py` (corresponds to Table 4)
+
+The timings reported in the paper correspond to the medians printed when running the above benchmarks on a single core of an Intel Tiger Lake-H CPU.
 
 

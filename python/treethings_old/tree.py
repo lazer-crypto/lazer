@@ -4,11 +4,11 @@ from lazer import *     # import lazer python module
 from lazer import _invmod
 import hashlib      # for SHAKE128
 import time
-from labrador import *
+from labrados import *
 
 FALCON_RING=polyring_t(512,12289)
-BIGFALCON_RING=polyring_t(512,LAB_RING_40.mod)
-BIGMOD_RING=polyring_t(256,LAB_RING_40.mod)
+BIGFALCON_RING=polyring_t(512,LAB_RING_38.mod)
+BIGMOD_RING=polyring_t(256,LAB_RING_38.mod)
 PRIMESIZE=str(math.ceil(math.log2(BIGMOD_RING.mod)))
 BASE=2**10
 

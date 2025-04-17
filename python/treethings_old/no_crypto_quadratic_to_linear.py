@@ -1,3 +1,5 @@
+import sys
+sys.path.append('..')   # path to lazer module
 from lazer import *     # import everything from the lazer python module
 from math import log
 SEED=[0]

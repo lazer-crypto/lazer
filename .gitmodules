@@ -1,3 +1,4 @@
-[submodule "src/labrador"]
-	path = src/labrador
-	url = git@github.com:lattice-dogs/labrador
+[submodule "src/labrados"]
+	path = src/labrados
+	url = https://github.com/lazer-crypto/labrador.git
+	branch = main

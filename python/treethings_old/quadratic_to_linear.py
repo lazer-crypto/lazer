@@ -1,13 +1,14 @@
+import sys
+sys.path.append('..')   # path to lazer module
 from lazer import *
-from labrador import *
-from treethings.tree import outter_commit, makeGvec, make_falcon_pk_leaves, make_LRhash, BIGMOD_RING
+from labrados import *
+from tree import outter_commit, makeGvec, make_falcon_pk_leaves, make_LRhash, BIGMOD_RING
 
 from math import log
 import hashlib
 
 SEED=[0]
 
-#BIGMOD_RING = polyring_t(256, LAB_RING_40.mod)
 PRIMESIZE = str(math.ceil(math.log2(BIGMOD_RING.mod)))
 Rq = BIGMOD_RING
 
