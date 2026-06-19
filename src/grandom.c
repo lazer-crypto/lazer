@@ -34,8 +34,7 @@ static const z128 CDF155[]
         { 0ULL, 0ULL } };
 
 /*
- * Compute exp(x) for x such that |x| <= 0.5*ln 2
- * FIXME: Recompute Remez coefficients for interval [-ln 2,0]
+ * Compute exp(x) for x in [-ln 2, 0]  
  *
  * The algorithm used below is derived from the public domain
  * library fdlibm (http://www.netlib.org/fdlibm/e_exp.c).
@@ -44,16 +43,17 @@ static const z128 CDF155[]
 static inline double
 exp_small (double x)
 {
-#define C1 (1.66666666666666019037e-01)
-#define C2 (-2.77777777770155933842e-03)
-#define C3 (6.61375632143793436117e-05)
-#define C4 (-1.65339022054652515390e-06)
-#define C5 (4.13813679705723846039e-08)
+#define C1 ( 1.66666666666666657415e-01)
+#define C2 (-2.77777777777722060387e-03)
+#define C3 ( 6.61375660702744565646e-05)
+#define C4 (-1.65343769616898187644e-06)
+#define C5 ( 4.17431906195525278958e-08)
+#define C6 (-1.02842107821646284274e-09)
 
   double t;
 
   t = x * x;
-  t = x - t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * C5)))); // R1
+  t = x - t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * (C5 + t * C6))))); // R1
   t = 1.0 - ((x * t) / (t - 2.0) - x);
   return t;
 
@@ -62,6 +62,7 @@ exp_small (double x)
 #undef C3
 #undef C4
 #undef C5
+#undef C6
 }
 
 static inline unsigned int
