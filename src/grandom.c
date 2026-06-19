@@ -30,8 +30,7 @@ static const z128 CDF155[]
         { 0ULL, 1055215183460ULL },
         { 0ULL, 724109373ULL },
         { 0ULL, 327744ULL },
-        { 0ULL, 98ULL },
-        { 0ULL, 0ULL } };
+        { 0ULL, 98ULL } };
 
 /*
  * Compute exp(x) for x in [-ln 2, 0]  
