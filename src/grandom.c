@@ -66,17 +66,24 @@ exp_small (double x)
 }
 
 static inline unsigned int
-cdfsampler (rng_state_t state, const z128 CDF[])
+cdfsampler (rng_state_t state, const z128 CDF[], unsigned int len)
 {
-  uint64_t buf[2];
-  const uint64_t *hi = buf, *lo = buf + 1;
-  unsigned int z;
+  uint64_t buf[2], hi, lo, d;
+  unsigned int z, i;
+  int b0, b1, b2;
 
   rng_urandom (state, (unsigned char *)buf, 16);
+  hi = buf[0];
+  lo = buf[1];
 
   z = 0;
-  while (*hi <= CDF[z].hi && (*hi < CDF[z].hi || *lo < CDF[z].lo))
-    ++z;
+  for (i = 0; i < len; i++)
+    {
+      b0 = __builtin_sub_overflow (lo, CDF[i].lo, &d); // b0 = (lo < CDF[i].lo)
+      b1 = __builtin_sub_overflow (hi, CDF[i].hi, &d); // b1 = (hi < CDF[i].hi) 
+      b2 = __builtin_sub_overflow (d, (uint64_t)b0, &d); // d = 0 if (hi = CDF[i].hi). then, if b0 = 1, b2 = 1
+      z += (unsigned int)(b1 | b2); 
+    }
 
   return z;
 }
@@ -123,7 +130,7 @@ gaussian155 (rng_state_t state, double c)
       b = bits & 1;
       bits >>= 1;
       pos += 1;
-      k = cdfsampler (state, CDF155);
+      k = cdfsampler (state, CDF155, sizeof (CDF155) / sizeof (CDF155[0]));
       k = (-b & (2 * k)) - k + b; // bimodal Gaussian
       x = ((k - c) * (k - c) - (k - b) * (k - b)) * dss;
     }
