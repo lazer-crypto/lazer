@@ -50,11 +50,20 @@ exp_small (double x)
 #define C5 ( 4.17431906195525278958e-08)
 #define C6 (-1.02842107821646284274e-09)
 
-  double t;
+  double t, d, y;
 
   t = x * x;
   t = x - t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * (C5 + t * C6))))); // R1
-  t = 1.0 - ((x * t) / (t - 2.0) - x);
+
+  /* 1/(t - 2) via Newton (y <- y*(2 - d*y)) */
+  d = t - 2.0;
+  y = -0.4193;
+  y *= 2.0 - d * y;
+  y *= 2.0 - d * y;
+  y *= 2.0 - d * y;
+  y *= 2.0 - d * y;
+  y *= 2.0 - d * y;
+  t = 1.0 - (x * t * y - x); // == 1.0 - ((x * t) / (t - 2.0) - x)
   return t;
 
 #undef C1
