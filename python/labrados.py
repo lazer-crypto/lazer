@@ -1,10 +1,10 @@
 from lazer import *
 from decomposition import neg_decompose, makeGvec
 
-LAB_RING_32=polyring_t(64,2**32-99)
-LAB_RING_36=polyring_t(64,2**36-243)
-LAB_RING_38=polyring_t(64,2**38-107)
 LAB_DEGREE=256
+LAB_RING_32=polyring_t(LAB_DEGREE,2**32-99)
+LAB_RING_36=polyring_t(LAB_DEGREE,2**36-243)
+LAB_RING_38=polyring_t(LAB_DEGREE,2**38-107)
 MAX_C=2**63-1
 
 def printi64ar(ar,ar_size):
