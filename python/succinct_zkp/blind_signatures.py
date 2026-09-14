@@ -264,8 +264,7 @@ def knowledge_preimage_commitment(message, commitment, trace_commitment, zk = Tr
     PS_description.list_number_polynomials += [1] * dimension_randomness
     next_norm_constraint = len(PS_description.list_norm_constraints)
     PS_description.list_norm_constraints += [sqnorm_polynomials_randomness] * dimension_randomness
-    PS_description.approx_norm_list += [(next_norm_constraint + i, 2 ** 40) for i in range(dimension_randomness)]
-
+    
     # add description witnesses and statements for binary decomposition of randomness
     PS_description = description_compute_binary_randomness(PS_description, dimension_randomness, bits_coefficients_rand)
 
