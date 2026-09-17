@@ -37,7 +37,7 @@ To reproduce the results from the paper "The LaZer Library: Lattice-Based Zero K
 `10eafeca4cd53ff4fc54193dce904dbd0026fefd`.
 
 To reproduce the results from the paper "A Toolkit for Succinct Lattice-Based Zero Knowledge Proofs", check out commit
-`59a52f74ca39584edf77b4b8b7437dbd48f9ad94`.
+`51baa16c4a642ad90b964b9c1592c230aa0c0941`.
 
 To build the lazer C library, from the base directory, run:
 
