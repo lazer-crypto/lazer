@@ -2,9 +2,6 @@ import sys
 sys.path.append('..')   # path to lazer module
 from lazer import *     # import lazer python module
 from lazer import _invmod
-import hashlib      # for SHAKE128
-import time
-from labrados import *
 
 def makeGvec(ring,base,dim):
     """ 
