@@ -59,3 +59,5 @@ third_party/hexl-development/
 docs/build/*
 
 python/_cstruc_ffi.c
+
+*.egg-info/

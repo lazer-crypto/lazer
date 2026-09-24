@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "cffi>=1.15"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lazer"
+version = "0.0.0"
+description = "Lazer: a library for lattice-based zero-knowledge proofs (Python/CFFI bindings, packaged for use as a dependency by downstream projects)"
+requires-python = ">=3.10"
+dependencies = ["cffi>=1.15"]
+
+# Not a stable, public API — this packaging exists so that closely related
+# projects (in sibling checkouts) can depend on a specific Lazer revision
+# via `pip install -e ../lazer`, not to make Lazer a general-purpose PyPI
+# package.
+
+[tool.setuptools]
+py-modules = ["lazer", "labrados", "decomposition"]
+package-dir = {"" = "python"}
