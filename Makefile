@@ -200,7 +200,7 @@ libhexl_wrapper.so: $(HASH_DIR)/src/hexl_wrapper.cpp
 
 LABRADOR_CFLAGS = -std=gnu2x -Wall -Wextra -Wmissing-prototypes -Wredundant-decls \
   -Wshadow -Wpointer-arith -Wno-unused-function -fmax-errors=1 -flto=auto \
-  -fwrapv -ffast-math -march=native -mtune=native -O3 -DNDEBUG -fvisibility=hidden 
+  -fwrapv -ffast-math -march=native -mtune=native -O3 -DNDEBUG -fvisibility=hidden
 LABRADOR_LIBS = -lmvec -lm
 
 LABRADOR_DIR = src/labrados
