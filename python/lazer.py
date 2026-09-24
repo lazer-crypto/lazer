@@ -2025,6 +2025,22 @@ class polymat_t:
             res.set_elem(1,i,i,0)
         return res
 
+    # lift to a ring with larger modulus
+    def lift(self,ring_new: polyring_t):
+        """Copies the centralized coefficients into a ring of the same dimension with larger modulus
+        
+        Args:
+            ring_new (polyring_t): the new ring with a larger modulus
+
+        Returns:
+            polymat_t: a matrix of polynomials in a larger modulus ring
+        """
+        assert self.ring.deg==ring_new.deg and self.ring.mod <= ring_new.mod
+        polmat_new=polymat_t(ring_new, self.rows, self.cols)
+        for i in range(self.rows):
+            row=self.get_row(i)
+            polmat_new.set_row(i, row.lift(ring_new))
+        return polmat_new
 
     def print(self):
         lib.polymat_dump(self.ptr)
