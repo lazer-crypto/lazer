@@ -2,6 +2,7 @@
 #include "aes256ctr-amd64.c"
 #include "aes256ctr.c"
 #include "blindsig.c"
+#include "falcon1024.c"
 #include "brandom.c"
 #include "bytes.c"
 #include "coder.c"

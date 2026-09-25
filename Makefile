@@ -277,6 +277,7 @@ LIBSOURCES = \
  src/blindsig-p2-params.h \
  src/blindsig.h \
  src/blindsig.c \
+ src/falcon1024.c \
  src/brandom.h \
  src/brandom.c \
  src/bytes.c \

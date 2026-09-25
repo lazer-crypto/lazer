@@ -1649,6 +1649,14 @@ void falcon_decode_pubkey (int16_t h[512], const uint8_t pk[897]);
 void falcon_preimage_sample (int16_t s1[512], int16_t s2[512],
                              const int16_t t[512], const uint8_t sk[1281]);
 
+void falcon1024_redc (int16_t c[1024]);
+void falcon1024_add (int16_t c[1024], const int16_t a[1024], const int16_t b[1024]);
+void falcon1024_mul (int16_t c[1024], const int16_t a[1024], const int16_t b[1024]);
+void falcon1024_keygen (uint8_t sk[2305], uint8_t pk[1793]);
+void falcon1024_decode_pubkey (int16_t h[1024], const uint8_t pk[1793]);
+void falcon1024_preimage_sample (int16_t s1[1024], int16_t s2[1024],
+                                 const int16_t t[1024], const uint8_t sk[2305]);
+
 /********************************************************************
  * 3.2 Internal functions and macros
  */

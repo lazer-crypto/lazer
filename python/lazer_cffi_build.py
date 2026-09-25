@@ -323,6 +323,13 @@ void falcon_keygen (uint8_t sk[], uint8_t pk[]);
 void falcon_decode_pubkey (int16_t h[], const uint8_t pk[]);
 void falcon_preimage_sample (int16_t s1[], int16_t s2[], const int16_t t[], const uint8_t sk[]);
 
+void falcon1024_redc (int16_t c[]);
+void falcon1024_add (int16_t c[], const int16_t a[], const int16_t b[]);
+void falcon1024_mul (int16_t c[], const int16_t a[], const int16_t b[]);
+void falcon1024_keygen (uint8_t sk[], uint8_t pk[]);
+void falcon1024_decode_pubkey (int16_t h[], const uint8_t pk[]);
+void falcon1024_preimage_sample (int16_t s1[], int16_t s2[], const int16_t t[], const uint8_t sk[]);
+
 void poly_toisoring (polyvec_t vec, poly_t a);
 void poly_fromisoring (poly_t a, polyvec_t vec);
 void polyvec_toisoring (polyvec_t vec, polyvec_t a);

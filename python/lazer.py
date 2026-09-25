@@ -2113,7 +2113,8 @@ class falcon_pol:
         temp=self+(-a)
         if type(a) is polyvec_t:
             return temp
-        return temp.redc()
+        temp.redc()
+        return temp
 
     def to_list(self):
         resl=[]
@@ -2278,6 +2279,216 @@ def falcon_poly_mul_toisoring(ring_out:polyring_t,a1,a2):
     pkmat=a1.to_polymat()
     s2vec=a2.to_polyvec()
     return lin_to_isoring(ring_out,RING_FALCON,pkmat,s2vec)
+
+RING_FALCON1024=polyring_t(1024,12289)
+
+class falcon1024_pol:
+    def __init__(self,coeff=None):
+        self.Q=12289
+        self.dim=1024
+        self.ptr=ffi.new("int16_t[1024]")
+        if coeff==None:
+            for i in range(1024):
+                self.ptr[i]=0
+        elif type(coeff) is list:
+            for i in range(1024):
+                self.ptr[i]=coeff[i]
+        elif type(coeff) is falcon1024_pol:
+            for i in range(1024):
+                self.ptr[i]=coeff.ptr[i]
+        elif type(coeff) is poly_t:
+            assert coeff.ring.deg==1024 and coeff.linf()<2**15
+            coeff.redc()
+            point64=ffi.new("int64_t []",1024)
+            lib.poly_get_coeffvec_i64(point64, coeff.ptr)
+            for i in range(1024):
+                self.ptr[i]=point64[i]
+
+    def copy(self):
+        res=falcon1024_pol(self)
+        return res
+
+    def set_pos(self,pos,val):
+        self.ptr[pos]=val
+
+    def get_pos(self,pos):
+        return self.ptr[pos]
+
+    def set_list(self,l):
+        for i in range(1024):
+            self.ptr[i]=l[i]
+
+    def redc(self):
+        lib.falcon1024_redc(self.ptr)
+
+    def __neg__(self):
+        res=falcon1024_pol()
+        for i in range(1024):
+            res.ptr[i]=-self.ptr[i]
+        return res
+
+    def __add__(self,a):
+        if type(a) is falcon1024_pol:
+            res=falcon1024_pol()
+            lib.falcon1024_add(res.ptr, self.ptr, a.ptr)
+            lib.falcon1024_redc(res.ptr)
+            return res
+        elif type(a) is polyvec_t:
+            assert a.ring.deg*a.dim == 1024
+            temp=self.to_isoring(a.ring)
+            return temp+a
+
+    def __mul__(self,a):
+        res=falcon1024_pol()
+        lib.falcon1024_mul(res.ptr, self.ptr, a.ptr)
+        lib.falcon1024_redc(res.ptr)
+        return res
+
+    def __sub__(self,a):
+        temp=self+(-a)
+        if type(a) is polyvec_t:
+            return temp
+        temp.redc()
+        return temp
+
+    def to_list(self):
+        resl=[]
+        for i in range(1024):
+            resl+=[self.ptr[i]]
+        return resl
+
+    def linf(self):
+        p=poly_t(RING_FALCON1024)
+        lib.poly_set_coeffvec_i16 (p.ptr, self.ptr)
+        return p.linf()
+
+    def l2sqr(self):
+        p=poly_t(RING_FALCON1024)
+        lib.poly_set_coeffvec_i16 (p.ptr, self.ptr)
+        return p.l2sq()
+
+    def to_poly(self):
+        p=poly_t(RING_FALCON1024)
+        lib.poly_set_coeffvec_i16 (p.ptr, self.ptr)
+        return p
+
+    def to_polyvec(self):
+        m=polyvec_t(RING_FALCON1024,1)
+        p=poly_t(RING_FALCON1024)
+        lib.poly_set_coeffvec_i16 (p.ptr, self.ptr)
+        m.set_elem(p,0)
+        return m
+
+    def to_polymat(self):
+        m=polymat_t(RING_FALCON1024,1,1)
+        p=poly_t(RING_FALCON1024)
+        lib.poly_set_coeffvec_i16 (p.ptr, self.ptr)
+        m.set_elem(p,0,0)
+        return m
+
+    def to_isoring(self,ring:polyring_t):
+        p=poly_t(RING_FALCON1024)
+        lib.poly_set_coeffvec_i16 (p.ptr, self.ptr)
+        return p.to_isoring(ring)
+
+    def print(self):
+        print(self.to_list())
+
+class falcon1024_skenc:
+    def __init__(self):
+        self.ptr=ffi.new("uint8_t[]",2305)
+
+class falcon1024_pkenc:
+    def __init__(self):
+        self.ptr=ffi.new("uint8_t[]",1793)
+
+def falcon1024_keygen():
+    """Creates a public key/secret key for the falcon-1024 signature scheme
+
+        Returns [falcon1024_skenc,falcon1024_pkenc,poly_t]: falcon1024_skenc and falcon1024_pkenc are the secret and public
+            keys for falcon-1024. also returns a poly_t version of falcon1024_pkenc
+    """
+    skenc=falcon1024_skenc()
+    pkenc=falcon1024_pkenc()
+    pk=falcon1024_pol()
+    lib.falcon1024_keygen(skenc.ptr,pkenc.ptr)
+    lib.falcon1024_decode_pubkey(pk.ptr,pkenc.ptr)
+    pk=pk.to_poly()
+    return skenc,pkenc,pk
+
+def falcon1024_decode_pk(pkenc: falcon1024_pkenc,target_ring = None):
+    """Takes a falcon1024_pkenc type and produces either a poly_t or a polymat_t
+
+    Args:
+        pkenc (falcon1024_pkenc): the falcon-1024 public key as a falcon1024_pkenc type
+        target_ring (polyring_t,None): if None, then produces a poly_t in the falcon-1024 ring
+            if target_ring is some ring of degree deg, then it converts the falcon-1024 pk polynomial
+            to a matrix M such that for all polynomials s in the falcon-1024 ring, (M*aut(s))=aut(pk*s)
+
+    Returns:
+        poly_t,polymat_t : either a polynomial in the falcon-1024 ring or a polymat_t as described above
+
+    """
+
+    pk=falcon1024_pol()
+    lib.falcon1024_decode_pubkey(pk.ptr,pkenc.ptr)
+    if target_ring == None:
+        return pk.to_poly()
+    else:
+        assert target_ring.mod == RING_FALCON1024.mod
+        res_mat,garb_mat=falcon1024_poly_mul_toisoring(target_ring,pk,pk)
+        return res_mat
+
+def falcon1024_preimage_sample(skenc:falcon1024_skenc,t,target_ring=None):
+    """Produces a pre-image of t
+
+    Args:
+        skenc (falcon1024_skenc) : the falcon-1024 secret key from falcon1024_keygen()
+        t (poly_t,polyvec_t) : either a poly_t in the falcon-1024 ring or a polyvec_t with the same
+            modulus as in the falcon-1024 ring (i.e. 12289) and such that the ring degree * vector dimension
+            is 1024. If poly_t, then it does normal pre-image sampling returning s_1,s_2 such that
+            pk*s_2+s_1=t. if t is a polyvec, then it applies the inverse automorphism, as described in
+            falcon1024_decode_pk, to t and then does pre-image sampling
+        target_ring (polyring_t,optional) : in None, just returns the polynomials. if it's some ring,
+            then returns polyvec_t aut(s_1) and aut(s_2)
+
+    Returns:
+        (poly_t,poly_t),(polyvec_t,polyvec_t) - returns s_1,s_2 as explained above
+    """
+
+    s1=falcon1024_pol()
+    s2=falcon1024_pol()
+    if type(t) is falcon1024_pol:
+        lib.falcon1024_preimage_sample(s1.ptr,s2.ptr,t.ptr,skenc.ptr)
+    elif type(t) is poly_t:
+        assert t.ring.deg == 1024
+        tf = falcon1024_pol(t)
+        lib.falcon1024_preimage_sample(s1.ptr,s2.ptr,tf.ptr,skenc.ptr)
+    elif type(t) is polyvec_t:
+        assert t.ring.deg*t.dim == 1024
+        tf=from_isoring_tofalcon1024pol(t)
+        lib.falcon1024_preimage_sample(s1.ptr,s2.ptr,tf.ptr,skenc.ptr)
+
+    if target_ring == None:
+        s1res=s1.to_poly()
+        s2res=s2.to_poly()
+        s1res.redc()
+        s2res.redc()
+    else:
+        s1res=s1.to_isoring(target_ring)
+        s2res=s2.to_isoring(target_ring)
+    return s1res,s2res
+
+def from_isoring_tofalcon1024pol(inp_vec:polyvec_t):
+    assert 1024 % inp_vec.ring.deg == 0
+    resp=poly_t(RING_FALCON1024)
+    lib.poly_fromisoring(resp.ptr,inp_vec.ptr)
+    return falcon1024_pol(resp.to_list())
+
+def falcon1024_poly_mul_toisoring(ring_out:polyring_t,a1,a2):
+    pkmat=a1.to_polymat()
+    s2vec=a2.to_polyvec()
+    return lin_to_isoring(ring_out,RING_FALCON1024,pkmat,s2vec)
 
 def list_inner_product(a: list, b:list):
     assert len(a)==len(b)
