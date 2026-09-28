@@ -6,8 +6,14 @@ the same steps a developer runs by hand (see README: `make`, then
 python/ modules. This lets `pip install -e .` (from a sibling checkout)
 work as a developer workflow; it is not an attempt to make Lazer a
 polished, stable PyPI package.
+
+Only `lib-shared` is built (not the default `lib`, which also builds
+liblazer.a): the CFFI module only ever links against liblazer.so, so
+building the static archive too would just double the compile time for
+no benefit here.
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -17,17 +23,21 @@ from setuptools.command.build_py import build_py as _build_py
 
 REPO_ROOT = Path(__file__).resolve().parent
 PYTHON_DIR = REPO_ROOT / "python"
+MAKE_JOBS = str(os.cpu_count() or 1)
 
 
 # liblabrador{32,36,38}.so are optional LaBRADOR backends: lazer_cffi_build.py
-# picks up whichever of them exist. They use AVX512 intrinsics that simply fail 
-# to compile on CPUs without AVX512, so these are built best-effort and never 
-# block the rest of the install.
-OPTIONAL_LABRADOR_TARGETS = ["liblabrador32.so", "liblabrador36.so", "liblabrador38.so"]
+# picks up whichever of them exist. They use AVX512 intrinsics that simply fail
+# to compile on CPUs without AVX512, so these are built best-effort and never
+# block the rest of the install. Only 38 is actually used by downstream
+# projects today; add 32/36 back here if that changes.
+OPTIONAL_LABRADOR_TARGETS = ["liblabrador38.so"]
 
 
 def _build_native():
-    subprocess.run(["make"], cwd=REPO_ROOT, check=True)
+    subprocess.run(
+        ["make", "lib-shared", f"-j{MAKE_JOBS}"], cwd=REPO_ROOT, check=True
+    )
     for target in OPTIONAL_LABRADOR_TARGETS:
         result = subprocess.run(["make", target], cwd=REPO_ROOT)
         if result.returncode != 0:

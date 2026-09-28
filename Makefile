@@ -193,7 +193,7 @@ HASH_SRC = $(HASH_DIR)/src/hash.c
 libhash.so: $(HASH_INC) $(HASH_SRC) src/hexl_shared.o libhexl_wrapper.so
 	$(CC) $(CFLAGS) -I$(HASH_DIR)/src -I$(HEXL_DIR)/hexl/include -fPIC -shared -o $@ $(HASH_SRC) $(LIBS) libhexl_wrapper.so src/hexl_shared.o
 
-libhexl_wrapper.so: $(HASH_DIR)/src/hexl_wrapper.cpp
+libhexl_wrapper.so: $(HASH_DIR)/src/hexl_wrapper.cpp $(HEXL_DIR) src/hexl_shared.o
 	 $(CC) $(CFLAGS) -I$(HASH_DIR)/src -I$(HEXL_DIR)/hexl/include -fPIC -shared -o $@ $< src/hexl_shared.o
 
 #### lib labrador
@@ -384,10 +384,10 @@ src/lazer_static.o: $(LIBSOURCES) lazer.h $(FALCON_DIR)
 src/lazer_shared.o: $(LIBSOURCES) lazer.h $(FALCON_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(FALCON_DIR) -I. -c -fPIC -o src/lazer_shared.o src/lazer.c
 
-src/hexl_static.o: src/hexl.h $(HEXL_DIR)
+src/hexl_static.o: src/hexl.cpp src/hexl.h $(HEXL_DIR)
 	$(CXX) $(CPPFLAGS) $(CFLAGS) -Isrc -I$(HEXL_DIR)/hexl/include -c -o src/hexl_static.o src/hexl.cpp
 
-src/hexl_shared.o: src/hexl.h $(HEXL_DIR)
+src/hexl_shared.o: src/hexl.cpp src/hexl.h $(HEXL_DIR)
 	$(CXX) $(CPPFLAGS) $(CFLAGS) -Isrc -I$(HEXL_DIR)/hexl/include -c -fPIC -o src/hexl_shared.o src/hexl.cpp
 
 lazer.h: src/lazer-in1.h src/lazer-in2.h src/moduli.h config.h
