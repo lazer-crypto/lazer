@@ -30,12 +30,10 @@ static const z128 CDF155[]
         { 0ULL, 1055215183460ULL },
         { 0ULL, 724109373ULL },
         { 0ULL, 327744ULL },
-        { 0ULL, 98ULL },
-        { 0ULL, 0ULL } };
+        { 0ULL, 98ULL } };
 
 /*
- * Compute exp(x) for x such that |x| <= 0.5*ln 2
- * FIXME: Recompute Remez coefficients for interval [-ln 2,0]
+ * Compute exp(x) for x in [-ln 2, 0]  
  *
  * The algorithm used below is derived from the public domain
  * library fdlibm (http://www.netlib.org/fdlibm/e_exp.c).
@@ -44,17 +42,27 @@ static const z128 CDF155[]
 static inline double
 exp_small (double x)
 {
-#define C1 (1.66666666666666019037e-01)
-#define C2 (-2.77777777770155933842e-03)
-#define C3 (6.61375632143793436117e-05)
-#define C4 (-1.65339022054652515390e-06)
-#define C5 (4.13813679705723846039e-08)
+#define C1 ( 1.66666666666666657415e-01)
+#define C2 (-2.77777777777722060387e-03)
+#define C3 ( 6.61375660702744565646e-05)
+#define C4 (-1.65343769616898187644e-06)
+#define C5 ( 4.17431906195525278958e-08)
+#define C6 (-1.02842107821646284274e-09)
 
-  double t;
+  double t, d, y;
 
   t = x * x;
-  t = x - t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * C5)))); // R1
-  t = 1.0 - ((x * t) / (t - 2.0) - x);
+  t = x - t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * (C5 + t * C6))))); // R1
+
+  /* 1/(t - 2) via Newton (y <- y*(2 - d*y)) */
+  d = t - 2.0;
+  y = -0.4193;
+  y *= 2.0 - d * y;
+  y *= 2.0 - d * y;
+  y *= 2.0 - d * y;
+  y *= 2.0 - d * y;
+  y *= 2.0 - d * y;
+  t = 1.0 - (x * t * y - x); // == 1.0 - ((x * t) / (t - 2.0) - x)
   return t;
 
 #undef C1
@@ -62,20 +70,28 @@ exp_small (double x)
 #undef C3
 #undef C4
 #undef C5
+#undef C6
 }
 
 static inline unsigned int
-cdfsampler (rng_state_t state, const z128 CDF[])
+cdfsampler (rng_state_t state, const z128 CDF[], unsigned int len)
 {
-  uint64_t buf[2];
-  const uint64_t *hi = buf, *lo = buf + 1;
-  unsigned int z;
+  uint64_t buf[2], hi, lo, d;
+  unsigned int z, i;
+  int b0, b1, b2;
 
   rng_urandom (state, (unsigned char *)buf, 16);
+  hi = buf[0];
+  lo = buf[1];
 
   z = 0;
-  while (*hi <= CDF[z].hi && (*hi < CDF[z].hi || *lo < CDF[z].lo))
-    ++z;
+  for (i = 0; i < len; i++)
+    {
+      b0 = __builtin_sub_overflow (lo, CDF[i].lo, &d); // b0 = (lo < CDF[i].lo)
+      b1 = __builtin_sub_overflow (hi, CDF[i].hi, &d); // b1 = (hi < CDF[i].hi) 
+      b2 = __builtin_sub_overflow (d, (uint64_t)b0, &d); // d = 0 if (hi = CDF[i].hi). then, if b0 = 1, b2 = 1
+      z += (unsigned int)(b1 | b2); 
+    }
 
   return z;
 }
@@ -122,7 +138,7 @@ gaussian155 (rng_state_t state, double c)
       b = bits & 1;
       bits >>= 1;
       pos += 1;
-      k = cdfsampler (state, CDF155);
+      k = cdfsampler (state, CDF155, sizeof (CDF155) / sizeof (CDF155[0]));
       k = (-b & (2 * k)) - k + b; // bimodal Gaussian
       x = ((k - c) * (k - c) - (k - b) * (k - b)) * dss;
     }
