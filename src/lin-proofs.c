@@ -4244,11 +4244,14 @@ ret:
  * obtain a hash of the public parameters and the statement.
  */
 static void
-__lnp_hash_pp_and_statement (__lnp_state_t state, uint8_t hash[32])
+__lnp_hash_pp_and_statement (__lnp_state_t state, uint8_t hash[32],
+                             const uint8_t *ctx, size_t ctxlen)
 {
   lnp_tbox_params_srcptr params = state->params;
   const unsigned int nprime = params->nprime;
   shake128_state_t hstate;
+  uint8_t lenbuf[8];
+  unsigned int i;
 
   ASSERT_ERR (nprime == 0 || state->statement_arp_set == 1);
 
@@ -4256,6 +4259,15 @@ __lnp_hash_pp_and_statement (__lnp_state_t state, uint8_t hash[32])
   shake128_absorb (hstate, state->ppseed, 32);
   if (nprime > 0)
     shake128_absorb (hstate, state->hash_arp, 32);
+  /* optional context, length-prefixed. Nothing is absorbed without one, so
+     proofs without a context are unchanged. */
+  if (ctx != NULL)
+    {
+      for (i = 0; i < 8; i++)
+        lenbuf[i] = (uint8_t)((uint64_t)ctxlen >> (8 * i));
+      shake128_absorb (hstate, lenbuf, 8);
+      shake128_absorb (hstate, ctx, ctxlen);
+    }
   shake128_squeeze (hstate, hash, 32);
   shake128_clear (hstate);
 }
@@ -4400,7 +4412,7 @@ __verify_statement (_lnp_prover_state_t state_, const lin_params_t lparam)
 
 static void
 _lin_prover_prove (lin_prover_state_t state__, uint8_t *proof, size_t *len,
-                   const uint8_t seed[32])
+                   const uint8_t seed[32], const uint8_t *ctx, size_t ctxlen)
 {
   lin_params_srcptr linparam = state__->state->params;
   _lnp_prover_state_ptr state_ = state__->lnp_state;
@@ -4437,7 +4449,7 @@ _lin_prover_prove (lin_prover_state_t state__, uint8_t *proof, size_t *len,
   polyvec_urandom_bnd (state_->s2, lo, hi, seedproto, 0);
 
   /* hash public parameters and statement */
-  __lnp_hash_pp_and_statement (state, hash);
+  __lnp_hash_pp_and_statement (state, hash, ctx, ctxlen);
 
   /* commit */
   abdlop_commit (state->tA1, state->tA2, state->tB, state_->s1, state_->m,
@@ -4469,7 +4481,7 @@ _lin_prover_prove (lin_prover_state_t state__, uint8_t *proof, size_t *len,
 
 static int
 _lin_verifier_verify (lin_verifier_state_t state__, const uint8_t *proof,
-                      size_t *len)
+                      size_t *len, const uint8_t *ctx, size_t ctxlen)
 {
   lin_params_srcptr linparam = state__->state->params;
   _lnp_verifier_state_ptr state_ = state__->lnp_state;
@@ -4511,7 +4523,7 @@ _lin_verifier_verify (lin_verifier_state_t state__, const uint8_t *proof,
   polyvec_redc (state->z4, state->z4);
 
   /* hash public parameters and statement */
-  __lnp_hash_pp_and_statement (state, hash);
+  __lnp_hash_pp_and_statement (state, hash, ctx, ctxlen);
 
   /* hash in commitment */
   abdlop_hashcomm (hash, state->tA1, state->tB, tbox);
@@ -4793,6 +4805,17 @@ void
 lin_prover_prove (lin_prover_state_t state, uint8_t *proof, size_t *len,
                   const uint8_t coins[32])
 {
+  lin_prover_prove_ctx (state, proof, len, coins, NULL, 0);
+}
+
+/* As lin_prover_prove, but binds the proof to the context ctx (ctxlen bytes,
+   absorbed into the Fiat-Shamir hash). The proof verifies only with
+   lin_verifier_verify_ctx and the same context. */
+void
+lin_prover_prove_ctx (lin_prover_state_t state, uint8_t *proof, size_t *len,
+                      const uint8_t coins[32], const uint8_t *ctx,
+                      size_t ctxlen)
+{
   _lnp_prover_state_ptr __lnp_state = state->lnp_state;
   _lin_state_ptr lin_state = state->state;
   uint8_t coins_[32];
@@ -4806,7 +4829,8 @@ lin_prover_prove (lin_prover_state_t state, uint8_t *proof, size_t *len,
   // XXX do this earlier ?
   _lnp_prover_set_statement_arp (__lnp_state, lin_state->Ds, lin_state->Dm,
                                  lin_state->u);
-  _lin_prover_prove (state, proof, len, coins != NULL ? coins : coins_);
+  _lin_prover_prove (state, proof, len, coins != NULL ? coins : coins_, ctx,
+                     ctxlen);
 
   DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_RETURN, "%s end", __func__);
 }
@@ -4871,6 +4895,15 @@ int
 lin_verifier_verify (lin_verifier_state_t state, const uint8_t *proof,
                      size_t *len)
 {
+  return lin_verifier_verify_ctx (state, proof, len, NULL, 0);
+}
+
+/* As lin_verifier_verify, for a proof bound to the context ctx (ctxlen bytes)
+   by lin_prover_prove_ctx. */
+int
+lin_verifier_verify_ctx (lin_verifier_state_t state, const uint8_t *proof,
+                         size_t *len, const uint8_t *ctx, size_t ctxlen)
+{
   _lnp_verifier_state_ptr __lnp_state = state->lnp_state;
   _lin_state_ptr lin_state = state->state;
   int rc;
@@ -4878,7 +4911,7 @@ lin_verifier_verify (lin_verifier_state_t state, const uint8_t *proof,
   DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_ENTRY, "%s begin", __func__);
   _lnp_verifier_set_statement_arp (__lnp_state, lin_state->Ds, lin_state->Dm,
                                    lin_state->u);
-  rc = _lin_verifier_verify (state, proof, len);
+  rc = _lin_verifier_verify (state, proof, len, ctx, ctxlen);
   DEBUG_PRINTF (DEBUG_PRINT_FUNCTION_RETURN, "%s end", __func__);
   return rc;
 }

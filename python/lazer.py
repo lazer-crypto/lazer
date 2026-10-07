@@ -2715,12 +2715,15 @@ class lin_prover_state_t:
         """
         lib.lin_prover_set_witness(self.ptr, w.ptr)
 
-    def prove(self, coins: bytes = None):
+    def prove(self, coins: bytes = None, ctx: bytes = None):
         """Produces the ZK proof
 
         Args:
             coins (bytes,None): if coins is a lenght 32 byte array, then it uses this for internal
                 randomness. otherwise, use system randomness.
+            ctx (bytes,None): optional context, absorbed into the Fiat-Shamir hash. A proof
+                with a context only verifies with the same context. Without one, the proof
+                is the same as before contexts were supported.
         
         Returns:
             bytes,int : a byte array containing the proof and the number of bytes in the proof 
@@ -2730,12 +2733,17 @@ class lin_prover_state_t:
             coins = ffi.NULL
         elif len(coins) != 32:
             raise ValueError("coins must be 32 bytes.")
+        if ctx is not None and not isinstance(ctx, bytes):
+            raise TypeError("ctx must be bytes.")
 
         expected_prooflen = int(math.ceil(self.expected_prooflen * 1.2))
         # print(f"expected prooflen {expected_prooflen}")
         proof = ffi.new(f"char[{expected_prooflen}]")
         prooflen = ffi.new("size_t[1]")
-        lib.lin_prover_prove(self.ptr, proof, prooflen, coins)
+        if ctx is None:
+            lib.lin_prover_prove(self.ptr, proof, prooflen, coins)
+        else:
+            lib.lin_prover_prove_ctx(self.ptr, proof, prooflen, coins, ctx, len(ctx))
         return ffi.unpack(proof, prooflen[0])
 
 
@@ -2794,18 +2802,24 @@ class lin_verifier_state_t:
     # def set_witness(self, w: polyvec_t):
     #     lib.lin_verifier_set_witness(self.ptr, w.ptr)
 
-    def verify(self, proof: bytes):
+    def verify(self, proof: bytes, ctx: bytes = None):
         """Verifies the ZK proof
 
         Args:
             proof (bytes): the ZK proof
+            ctx (bytes,None): the context the proof was made with, if any
         
         Returns:
             nothing, or throws exception if the proof is invalid
 
         """
+        if ctx is not None and not isinstance(ctx, bytes):
+            raise TypeError("ctx must be bytes.")
         prooflen = ffi.new("size_t[1]")
-        accept = lib.lin_verifier_verify(self.ptr, proof, prooflen)
+        if ctx is None:
+            accept = lib.lin_verifier_verify(self.ptr, proof, prooflen)
+        else:
+            accept = lib.lin_verifier_verify_ctx(self.ptr, proof, prooflen, ctx, len(ctx))
         if accept != 1:
             raise VerificationError("Verification failed.")
 

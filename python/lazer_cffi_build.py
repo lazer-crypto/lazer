@@ -348,6 +348,9 @@ void lin_prover_set_statement (lin_prover_state_t state, polymat_t A,
 void lin_prover_set_witness (lin_prover_state_t state, polyvec_t w);
 void lin_prover_prove (lin_prover_state_t state, uint8_t *proof, size_t *len,
                        const uint8_t coins[32]);
+void lin_prover_prove_ctx (lin_prover_state_t state, uint8_t *proof,
+                           size_t *len, const uint8_t coins[32],
+                           const uint8_t *ctx, size_t ctxlen);
 void lin_prover_clear (lin_prover_state_t state);
 void lin_verifier_init (lin_verifier_state_t state, const uint8_t ppseed[32],
                         const lin_params_t params);
@@ -357,6 +360,8 @@ void lin_verifier_set_statement (lin_verifier_state_t state, polymat_t A,
                                  polyvec_t t);
 int lin_verifier_verify (lin_verifier_state_t state, const uint8_t *proof,
                          size_t *len);
+int lin_verifier_verify_ctx (lin_verifier_state_t state, const uint8_t *proof,
+                             size_t *len, const uint8_t *ctx, size_t ctxlen);
 void lin_verifier_clear (lin_verifier_state_t state);
 
 void coder_enc_begin (coder_state_t state, uint8_t *out);
