@@ -2,7 +2,7 @@
 
 LAZER_DIR = ../..
 
-LIBS = $(LAZER_DIR)/liblazer.a -lmpfr -lgmp -lm ../../third_party/hexl-development/build/hexl/lib64/libhexl.a -lstdc++ #XXX
+LIBS = $(LAZER_DIR)/liblazer.a -lmpfr -lgmp -lm ../../third_party/hexl-development/build/hexl/lib/libhexl.a -lstdc++ #XXX
 CFLAGS = -Wall -Wextra -Wshadow -Wundef -O3 -g
 
 all: blindsig-demo
