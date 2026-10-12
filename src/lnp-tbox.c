@@ -3030,7 +3030,7 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   spolyvec_ptr r1tptr[1];
   poly_ptr r0tptr[1];
   int_ptr chal, acc;
-  polymat_t mat, vRDs, vRDm, vRpol;
+  polymat_t vRDs, vRDm, vRpol;
   polyvec_t subv1, subv2;
   int_ptr coeff1, coeff2;
   poly_ptr poly, poly2, poly3;
@@ -3046,7 +3046,6 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   INTVEC_T (vRu, lambda, 2 * Rq->q->nlimbs);
   intmat_urandom (V, q, log2q, seed, dom);
 
-  polymat_alloc (mat, Rq, nprime, MAX (m1, l));
   polymat_alloc (vRpol, Rq, lambda, nprime);
   polymat_alloc (vRDs, Rq, lambda, m1);
   if (l > 0)
@@ -3291,7 +3290,6 @@ __schwartz_zippel_accumulate_z4 (spolymat_ptr R2i[], spolyvec_ptr r1i[],
   if (l > 0)
     polymat_free (vRDm);
   polymat_free (vRpol);
-  polymat_free (mat);
 }
 
 static void
@@ -3331,7 +3329,7 @@ __schwartz_zippel_accumulate_z3 (
   spolyvec_ptr r1tptr[1];
   poly_ptr r0tptr[1];
   int_ptr chal, acc;
-  polymat_t mat, vRPs, vRPm, vRpol;
+  polymat_t vRPs, vRPm, vRpol;
   polyvec_t subv1, subv2;
   int_ptr coeff1, coeff2;
   poly_ptr poly, poly2, poly3;
@@ -3361,7 +3359,6 @@ __schwartz_zippel_accumulate_z3 (
   // printf ("V:\n");
   // intmat_dump (V);
 
-  polymat_alloc (mat, Rq, nex, MAX (m1, l));
   polymat_alloc (vRpol, Rq, lambda, nex);
   polymat_alloc (vRPs, Rq, lambda, m1);
   if (l > 0)
@@ -3754,7 +3751,6 @@ __schwartz_zippel_accumulate_z3 (
   if (l > 0)
     polymat_free (vRPm);
   polymat_free (vRpol);
-  polymat_free (mat);
   for (i = 0; i < Z; i++)
     {
       if (Es != NULL && Es[i] != NULL)
