@@ -1428,7 +1428,11 @@ _lnp_tbox_compute_z34 (uint8_t hash[32], polyvec_t tB, polyvec_t z3,
   polyvec_get_subvec (s1_, s1, 0, m1, 1);
   if (l > 0)
     polyvec_get_subvec (m_, m, 0, l, 1);
-  polyvec_get_subvec (beta, m, l + (256 / d) * 2, 1, 1);
+  /* beta follows the projection masks that are present (y3 if
+   * nex > 0, y4 if nprime > 0), as tbeta and Bbeta do below. */
+  polyvec_get_subvec (beta, m,
+                      l + (nprime > 0 ? 256 / d : 0) + (nex > 0 ? 256 / d : 0),
+                      1, 1);
   polyvec_set_zero (beta);
 
   polyvec_get_subvec (s21, s2, 0, m2 - kmsis, 1);
@@ -1643,10 +1647,12 @@ _lnp_tbox_compute_z34 (uint8_t hash[32], polyvec_t tB, polyvec_t z3,
       /* tbeta */
       poly = polyvec_get_elem (beta, 0);
       coeffs = poly_get_coeffvec (poly);
-      if (nex > 0)
-        intvec_set_elem_i64 (coeffs, 0, beta3);
-      if (nprime > 0)
-        intvec_set_elem_i64 (coeffs, d / 2, beta4);
+      /* both sign equations, beta3^2 = 1 and beta4^2 = 1,
+       * are always part of the statement (slots lambda/2 and lambda/2 + 1, in
+       * prover and verifier), so a sign whose projection is absent must still
+       * be +-1: use 1. */
+      intvec_set_elem_i64 (coeffs, 0, nex > 0 ? beta3 : 1);
+      intvec_set_elem_i64 (coeffs, d / 2, nprime > 0 ? beta4 : 1);
       polyvec_set (tbeta, beta);
       polyvec_addmul (tbeta, Bbeta, s21, 0);
       polyvec_mod (tbeta, tbeta);
@@ -1798,6 +1804,7 @@ _lnp_tbox_compute_z34 (uint8_t hash[32], polyvec_t tB, polyvec_t z3,
   polyvec_free (y4);
   polyvec_free (z3_);
   polyvec_free (z4_);
+  polyvec_free (tmp_polyvec);
 }
 
 static int
@@ -3672,7 +3679,8 @@ __schwartz_zippel_accumulate_z3 (
 
       r1tptr[0] = r1t;
 
-      for (i = 0; i < loff4; i++)
+      /* the y3 masks occupy loff3 rows */
+      for (i = 0; i < loff3; i++)
         {
           poly = spolyvec_insert_elem (r1t, iy3 + 1 + 2 * i);
           for (j = 0; j < d; j++)
