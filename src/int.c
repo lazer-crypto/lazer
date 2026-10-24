@@ -156,12 +156,19 @@ int_mod (int_t r, const int_t a, const int_t m)
     }
   else
     {
-      limb_t scratch[mpn_sec_div_r_itch (a->nlimbs, m->nlimbs)];
+      /* mpn_sec_div_r needs the divisor's most significant limb to be
+       * non-zero: drop m's leading zero limbs (m may be stored with more
+       * limbs than it needs, e.g. with those of q). */
+      unsigned int dn = m->nlimbs;
+      while (dn > 1 && m->limbs[dn - 1] == 0)
+        dn--;
+      limb_t scratch[mpn_sec_div_r_itch (a->nlimbs, dn)];
       limb_t tmp[a->nlimbs];
 
       limbs_cpy (tmp, a->limbs, a->nlimbs);
-      mpn_sec_div_r (tmp, a->nlimbs, m->limbs, m->nlimbs, scratch);
-      limbs_cpy (r->limbs, tmp, r->nlimbs);
+      mpn_sec_div_r (tmp, a->nlimbs, m->limbs, dn, scratch);
+      memset (r->limbs, 0, r->nlimbs * sizeof (limb_t));
+      limbs_cpy (r->limbs, tmp, dn);
       r->neg = a->neg;
     }
 }
