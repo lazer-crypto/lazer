@@ -265,7 +265,7 @@ lnp_quad_prove (uint8_t hash[32], polyvec_t tB, poly_t c, polyvec_t z1,
                                 params->stdev2sqr);
           if (params->rej2 == 2)
             rej = rej_bimodal (rngstate, z2coeffs, cs2coeffs, params->scM2,
-                               params->stdev1sqr);
+                               params->stdev2sqr);
           if (rej)
             {
               DEBUG_PRINTF (DEBUG_PRINT_REJ, "%s", "reject compr");
