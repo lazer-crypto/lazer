@@ -156,12 +156,21 @@ int_mod (int_t r, const int_t a, const int_t m)
     }
   else
     {
-      limb_t scratch[mpn_sec_div_r_itch (a->nlimbs, m->nlimbs)];
+      unsigned int mnlimbs;
+
+      /* mpn_sec_div_r requires the divisor's top limb to be non-zero */
+      for (mnlimbs = m->nlimbs; m->limbs[mnlimbs - 1] == 0; mnlimbs--)
+        ;
+      ASSERT_ERR (mnlimbs >= 1);
+      ASSERT_ERR (a->nlimbs >= mnlimbs);
+
+      limb_t scratch[mpn_sec_div_r_itch (a->nlimbs, mnlimbs)];
       limb_t tmp[a->nlimbs];
 
       limbs_cpy (tmp, a->limbs, a->nlimbs);
-      mpn_sec_div_r (tmp, a->nlimbs, m->limbs, m->nlimbs, scratch);
-      limbs_cpy (r->limbs, tmp, r->nlimbs);
+      mpn_sec_div_r (tmp, a->nlimbs, m->limbs, mnlimbs, scratch);
+      limbs_cpy (r->limbs, tmp, mnlimbs);
+      limbs_set (r->limbs + mnlimbs, 0, r->nlimbs - mnlimbs);
       r->neg = a->neg;
     }
 }
