@@ -1,12 +1,36 @@
+UNAME_M := $(shell uname -m)
+UNAME_S := $(shell uname -s)
+ifneq ($(filter x86_64 amd64,$(UNAME_M)),)
+ARCH_X86 = 1
 CFLAGS_FALCON_AMD64 = -DFALCON_FPNATIVE -DFALCON_AVX2 -DFALCON_FMA
+CFLAGS_ARCH = -march=native -mtune=native
+else
+# non-x86 (e.g. arm64): portable code paths, no AVX2/AVX512.
+# -mcpu (not -march) so that clang keeps the AES extension enabled.
+CFLAGS_FALCON_AMD64 = -DFALCON_FPNATIVE
+CFLAGS_ARCH = -mcpu=native
+endif
 CFLAGS_WARN = -Wall -Wextra
-CFLAGS_DEFAULT = $(CFLAGS_WARN) -O3 -g -march=native -mtune=native\
+CFLAGS_DEFAULT = $(CFLAGS_WARN) -O3 -g $(CFLAGS_ARCH)\
  -fomit-frame-pointer
 CFLAGS_DEBUG = $(CFLAGS_WARN) -Og -ggdb3
 ADD_CPPFLAGS = -DNDEBUG
 
 CPPFLAGS += $(ADD_CPPFLAGS)
-LIBS = -lm $(HEXL_DIR)/build/hexl/lib64/libhexl.a -lstdc++
+# hexl installs to lib64 on linux/x86-64 and to lib elsewhere
+HEXL_LIBDIR = $(if $(wildcard $(HEXL_DIR)/build/hexl/lib64),lib64,lib)
+LIBS = -lm $(HEXL_DIR)/build/hexl/$(HEXL_LIBDIR)/libhexl.a -lstdc++
+
+# gmp and mpfr from homebrew on macOS
+ifeq ($(UNAME_S),Darwin)
+BREW_PREFIX := $(shell brew --prefix 2>/dev/null)
+ifneq ($(BREW_PREFIX),)
+CPPFLAGS += -I$(BREW_PREFIX)/include
+LIBS += -L$(BREW_PREFIX)/lib
+endif
+# macOS does not allow undefined symbols in shared libraries
+SHARED_LIBS = $(LIBS)
+endif
 
 # honor user CFLAGS
 ifdef CFLAGS
@@ -176,7 +200,8 @@ HEXL_ZIP = $(HEXL_DIR).zip
 
 $(HEXL_DIR): $(HEXL_ZIP)
 	cd $(THIRD_PARTY_DIR) && unzip $(HEXL_SUBDIR).zip
-	cd $(HEXL_DIR) && cmake -S . -B build -DHEXL_BENCHMARK=OFF -DHEXL_TESTING=OFF
+	patch -d $(HEXL_DIR) -p1 < src/hexl.patch
+	cd $(HEXL_DIR) && cmake -S . -B build -DHEXL_BENCHMARK=OFF -DHEXL_TESTING=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 	cd $(HEXL_DIR) && cmake --build build
 #	cd $(HEXL_DIR) && cmake -S . -B build -DHEXL_SHARED_LIB=ON
 #	cd $(HEXL_DIR) && cmake --build build
@@ -368,7 +393,8 @@ lib-all: lazer.h lib-static-all lib-shared-all
 lib: lazer.h lib-static lib-shared
 
 lib-shared-all: lazer.h liblazer.so liblabrador32.so liblabrador36.so liblabrador38.so libhash.so
-lib-shared: lazer.h liblazer.so libhash.so
+# libhash (lattice-hash) uses AVX512 intrinsics: x86-64 only
+lib-shared: lazer.h liblazer.so $(if $(ARCH_X86),libhash.so)
 lib-static-all: lazer.h liblazer.a
 lib-static: lazer.h liblazer.a
 
@@ -376,7 +402,7 @@ liblazer.a: src/lazer_static.o src/hexl_static.o $(FALCON_OBJ_STATIC)
 	ar rcs liblazer.a src/lazer_static.o src/hexl_static.o $(FALCON_OBJ_STATIC)
 
 liblazer.so: src/lazer_shared.o  src/hexl_shared.o $(FALCON_OBJ_SHARED)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -shared -o liblazer.so src/lazer_shared.o src/hexl_shared.o $(FALCON_OBJ_SHARED)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -shared -o liblazer.so src/lazer_shared.o src/hexl_shared.o $(FALCON_OBJ_SHARED) $(SHARED_LIBS)
 
 src/lazer_static.o: $(LIBSOURCES) lazer.h $(FALCON_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(FALCON_DIR) -I. -c -o src/lazer_static.o src/lazer.c

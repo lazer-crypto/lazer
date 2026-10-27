@@ -23,6 +23,8 @@ Performance is currently only optimized for CPUs with the AVX-512 instruction se
 
 The functions for creating succinct proofs require AVX-512. Those functions will not be available on systems lacking AVX-512.
 
+The library also builds and runs on arm64 / aarch64 (e.g. macOS on Apple silicon, with gmp, mpfr and cmake installed via Homebrew). On non-x86 targets, portable code paths are used (scalar Intel HEXL, Falcon without AVX2, AES-256-CTR via the ARMv8 crypto extensions if available), so performance is lower than on AVX-512 systems.
+
 
 Building
 --------

@@ -16,6 +16,16 @@ and run lazer:
 - sagemath >= 10.2
 - python3 >= 3.10, its development package and the cffi package 
 
+The core C library (`make`, `make lib`) and its tests (`make check`)
+also build and run on arm64 / aarch64, e.g. macOS on Apple silicon
+with Apple clang and `brew install cmake gmp mpfr` (the Makefile picks
+up the Homebrew prefix automatically). On non-x86 targets the
+portable code paths are used: Intel HEXL runs its scalar
+implementation, Falcon is built without AVX2 and AES-256-CTR uses the
+ARMv8 crypto extensions if available. This is slower than the AVX-512
+build. `make all` additionally builds the Labrador and lattice-hash
+libraries, which require AVX-512 and are therefore x86-64 only.
+
 The following software is required to build the documentation:
 
  - sphinx >= 5.3 and the sphinxcontrib-bibtex package
@@ -26,7 +36,7 @@ with the dependencies' versions equal to the listed above.
 We assume that it works with greater versions as well,
 as long as they are backward compatible. It *may*
 work with lesser versions as well.
-Note that during compilation, the cpu_features package
+Note that during compilation on x86-64, the cpu_features package
 will be cloned from GitHub, so also git and an internet
 connection are required.
 

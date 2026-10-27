@@ -187,6 +187,7 @@ typedef struct
 {
 #if TARGET == TARGET_GENERIC
   uint8_t expanded[4][60];
+  _ALIGN16 uint8_t rkeys[15][16]; /* round keys, used with ARMv8 AES */
   uint8_t nonce[16];
   uint8_t cache[16];
   uint8_t *cache_ptr;
@@ -2018,7 +2019,7 @@ _get_coeffvec (poly_t poly)
   return poly->coeffs;
 }
 
-#ifndef _OS_IOS
+#if defined(__x86_64__) || defined(_M_X64)
 #include <immintrin.h>
 #include <x86intrin.h>
 #endif
@@ -2059,13 +2060,13 @@ static inline unsigned char
 _addcarry_u64_ (unsigned char c, unsigned long long x, unsigned long long y,
                 unsigned long long *p)
 {
-#ifdef _OS_IOS
-  unsigned long long cout;
-
-  *p = __builtin_addcll (x, y, c, &cout);
-  return cout;
-#else
+#if defined(__x86_64__) || defined(_M_X64)
   return _addcarry_u64 (c, x, y, p);
+#else
+  unsigned __int128 s = (unsigned __int128)x + y + c;
+
+  *p = (unsigned long long)s;
+  return (unsigned char)(s >> 64);
 #endif
 }
 
@@ -2073,13 +2074,13 @@ static inline unsigned char
 _subborrow_u64_ (unsigned char c, unsigned long long x, unsigned long long y,
                  unsigned long long *p)
 {
-#ifdef _OS_IOS
-  unsigned long long cout;
-
-  *p = __builtin_subcll (x, y, c, &cout);
-  return cout;
-#else
+#if defined(__x86_64__) || defined(_M_X64)
   return _subborrow_u64 (c, x, y, p);
+#else
+  unsigned __int128 s = (unsigned __int128)x - y - c;
+
+  *p = (unsigned long long)s;
+  return (unsigned char)((s >> 64) & 1);
 #endif
 }
 

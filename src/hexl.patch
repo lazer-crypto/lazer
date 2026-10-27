@@ -1,0 +1,257 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b0da96f..546d9d3 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -139,8 +139,14 @@ message(STATUS "CMAKE_INSTALL_PREFIX:     ${CMAKE_INSTALL_PREFIX}")
+ #------------------------------------------------------------------------------
+ # Third-party code...
+ #------------------------------------------------------------------------------
++if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
++  message(STATUS "CpuFeatures: not needed on ${CMAKE_SYSTEM_PROCESSOR}")
++  set(HEXL_NO_CPU_FEATURES ON)
++else()
+ find_package(CpuFeatures CONFIG)
+-if (NOT CpuFeatures_FOUND)
++endif()
++if (HEXL_NO_CPU_FEATURES)
++elseif (NOT CpuFeatures_FOUND)
+   message(STATUS "CpuFeatures: pre-installed CpuFeatures not found")
+   add_subdirectory(cmake/third-party/cpu-features)
+ else()
+diff --git a/hexl/CMakeLists.txt b/hexl/CMakeLists.txt
+index 7c660a0..30532a1 100644
+--- a/hexl/CMakeLists.txt
++++ b/hexl/CMakeLists.txt
+@@ -120,7 +120,9 @@ install(DIRECTORY ${HEXL_INC_ROOT_DIR}/
+         PATTERN "*.h")
+ 
+ if (HEXL_SHARED_LIB)
++  if (NOT HEXL_NO_CPU_FEATURES)
+     target_link_libraries(hexl PRIVATE cpu_features)
++  endif()
+     if (HEXL_DEBUG)
+         target_link_libraries(hexl PUBLIC easyloggingpp)
+         # Manually add logging include directory
+@@ -145,15 +147,18 @@ else ()
+         endif()
+     endif()
+ 
+-    if (CpuFeatures_FOUND)
++    if (HEXL_NO_CPU_FEATURES)
++    elseif (CpuFeatures_FOUND)
+       target_link_libraries(hexl PRIVATE cpu_features)
+     else()
+       hexl_create_archive(hexl cpu_features)
+     endif()
+ 
++    if (NOT HEXL_NO_CPU_FEATURES)
+     # Manually add cpu_features include directory
+     target_include_directories(hexl
+       PRIVATE $<TARGET_PROPERTY:cpu_features,INTERFACE_INCLUDE_DIRECTORIES>)
++    endif()
+ endif()
+ 
+ install(TARGETS hexl DESTINATION ${CMAKE_INSTALL_LIBDIR})
+diff --git a/hexl/util/cpu-features.hpp b/hexl/util/cpu-features.hpp
+index ba40839..88ab512 100644
+--- a/hexl/util/cpu-features.hpp
++++ b/hexl/util/cpu-features.hpp
+@@ -7,7 +7,9 @@
+ 
+ #include <cstdlib>
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include "cpuinfo_x86.h"  // NOLINT(build/include_subdir)
++#endif
+ 
+ namespace intel {
+ namespace hexl {
+@@ -20,6 +22,7 @@ static const bool disable_avx512ifma =
+ static const bool disable_avx512vbmi2 =
+     disable_avx512dq || (std::getenv("HEXL_DISABLE_AVX512VBMI2") != nullptr);
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ static const cpu_features::X86Features features =
+     cpu_features::GetX86Info().features;
+ 
+@@ -30,6 +33,12 @@ static const bool has_avx512ifma = features.avx512ifma && !disable_avx512ifma;
+ 
+ static const bool has_avx512vbmi2 =
+     features.avx512vbmi2 && !disable_avx512vbmi2;
++#else
++// Non-x86 targets (e.g. arm64): no AVX512, use the portable code paths.
++static const bool has_avx512dq = false;
++static const bool has_avx512ifma = false;
++static const bool has_avx512vbmi2 = false;
++#endif
+ 
+ }  // namespace hexl
+ }  // namespace intel
+diff --git a/hexl/include/hexl/util/gcc.hpp b/hexl/include/hexl/util/gcc.hpp
+index 828e383..ba067a4 100644
+--- a/hexl/include/hexl/util/gcc.hpp
++++ b/hexl/include/hexl/util/gcc.hpp
+@@ -55,7 +55,8 @@ inline uint64_t MultiplyUInt64Hi(uint64_t x, uint64_t y) {
+ 
+ // Returns most-significant bit of the input
+ inline uint64_t MSB(uint64_t input) {
+-  return static_cast<uint64_t>(std::log2l(input));
++  // not log2l: long double is only 64-bit on some targets (e.g. arm64)
++  return static_cast<uint64_t>(63 - __builtin_clzll(input));
+ }
+ 
+ #define HEXL_LOOP_UNROLL_4 _Pragma("GCC unroll 4")
+diff --git a/hexl/include/hexl/util/clang.hpp b/hexl/include/hexl/util/clang.hpp
+index 958bea7..ae4d55f 100644
+--- a/hexl/include/hexl/util/clang.hpp
++++ b/hexl/include/hexl/util/clang.hpp
+@@ -55,7 +55,8 @@ inline uint64_t MultiplyUInt64Hi(uint64_t x, uint64_t y) {
+ 
+ // Returns most-significant bit of the input
+ inline uint64_t MSB(uint64_t input) {
+-  return static_cast<uint64_t>(std::log2l(input));
++  // not log2l: long double is only 64-bit on some targets (e.g. arm64)
++  return static_cast<uint64_t>(63 - __builtin_clzll(input));
+ }
+ 
+ #define HEXL_LOOP_UNROLL_4 _Pragma("clang loop unroll_count(4)")
+diff --git a/hexl/eltwise/eltwise-cmp-add-avx512.cpp b/hexl/eltwise/eltwise-cmp-add-avx512.cpp
+index 7ead8ca..012b992 100644
+--- a/hexl/eltwise/eltwise-cmp-add-avx512.cpp
++++ b/hexl/eltwise/eltwise-cmp-add-avx512.cpp
+@@ -3,7 +3,9 @@
+ 
+ #include "eltwise/eltwise-cmp-add-avx512.hpp"
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ #include <stdint.h>
+ 
+ #include "eltwise/eltwise-cmp-add-internal.hpp"
+diff --git a/hexl/eltwise/eltwise-mult-mod-avx512ifma.cpp b/hexl/eltwise/eltwise-mult-mod-avx512ifma.cpp
+index 54374cf..61601a8 100644
+--- a/hexl/eltwise/eltwise-mult-mod-avx512ifma.cpp
++++ b/hexl/eltwise/eltwise-mult-mod-avx512ifma.cpp
+@@ -1,7 +1,9 @@
+ // Copyright (C) 2020 Intel Corporation
+ // SPDX-License-Identifier: Apache-2.0
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ #include <stdint.h>
+ 
+ #include <limits>
+diff --git a/hexl/eltwise/eltwise-fma-mod-avx512.cpp b/hexl/eltwise/eltwise-fma-mod-avx512.cpp
+index fa6a545..03f8c7a 100644
+--- a/hexl/eltwise/eltwise-fma-mod-avx512.cpp
++++ b/hexl/eltwise/eltwise-fma-mod-avx512.cpp
+@@ -3,7 +3,9 @@
+ 
+ #include "eltwise/eltwise-fma-mod-avx512.hpp"
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ 
+ #include "hexl/eltwise/eltwise-fma-mod.hpp"
+ #include "hexl/number-theory/number-theory.hpp"
+diff --git a/hexl/eltwise/eltwise-sub-mod-avx512.cpp b/hexl/eltwise/eltwise-sub-mod-avx512.cpp
+index 2039c91..a6408bf 100644
+--- a/hexl/eltwise/eltwise-sub-mod-avx512.cpp
++++ b/hexl/eltwise/eltwise-sub-mod-avx512.cpp
+@@ -3,7 +3,9 @@
+ 
+ #include "eltwise/eltwise-sub-mod-avx512.hpp"
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ #include <stdint.h>
+ 
+ #include "eltwise/eltwise-sub-mod-internal.hpp"
+diff --git a/hexl/eltwise/eltwise-add-mod-avx512.cpp b/hexl/eltwise/eltwise-add-mod-avx512.cpp
+index 7c103ca..a84b35b 100644
+--- a/hexl/eltwise/eltwise-add-mod-avx512.cpp
++++ b/hexl/eltwise/eltwise-add-mod-avx512.cpp
+@@ -3,7 +3,9 @@
+ 
+ #include "eltwise/eltwise-add-mod-avx512.hpp"
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ #include <stdint.h>
+ 
+ #include "eltwise/eltwise-add-mod-internal.hpp"
+diff --git a/hexl/eltwise/eltwise-cmp-sub-mod-avx512.hpp b/hexl/eltwise/eltwise-cmp-sub-mod-avx512.hpp
+index ff5a942..3a9cc98 100644
+--- a/hexl/eltwise/eltwise-cmp-sub-mod-avx512.hpp
++++ b/hexl/eltwise/eltwise-cmp-sub-mod-avx512.hpp
+@@ -3,7 +3,9 @@
+ 
+ #pragma once
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ #include <stdint.h>
+ 
+ #include "eltwise/eltwise-cmp-sub-mod-internal.hpp"
+diff --git a/hexl/eltwise/eltwise-mult-mod-avx512dq.cpp b/hexl/eltwise/eltwise-mult-mod-avx512dq.cpp
+index cbf0ec0..eed7f81 100644
+--- a/hexl/eltwise/eltwise-mult-mod-avx512dq.cpp
++++ b/hexl/eltwise/eltwise-mult-mod-avx512dq.cpp
+@@ -1,7 +1,9 @@
+ // Copyright (C) 2020 Intel Corporation
+ // SPDX-License-Identifier: Apache-2.0
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ #include <stdint.h>
+ 
+ #include <limits>
+diff --git a/hexl/ntt/inv-ntt-avx512.cpp b/hexl/ntt/inv-ntt-avx512.cpp
+index 8d340fe..51da9c3 100644
+--- a/hexl/ntt/inv-ntt-avx512.cpp
++++ b/hexl/ntt/inv-ntt-avx512.cpp
+@@ -3,7 +3,9 @@
+ 
+ #include "ntt/inv-ntt-avx512.hpp"
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ 
+ #include <cstring>
+ #include <functional>
+diff --git a/hexl/ntt/ntt-avx512-util.hpp b/hexl/ntt/ntt-avx512-util.hpp
+index c2342c0..2e3a591 100644
+--- a/hexl/ntt/ntt-avx512-util.hpp
++++ b/hexl/ntt/ntt-avx512-util.hpp
+@@ -3,7 +3,9 @@
+ 
+ #pragma once
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ 
+ #include <functional>
+ #include <vector>
+diff --git a/hexl/util/avx512-util.hpp b/hexl/util/avx512-util.hpp
+index c5e206a..672d2db 100644
+--- a/hexl/util/avx512-util.hpp
++++ b/hexl/util/avx512-util.hpp
+@@ -3,7 +3,9 @@
+ 
+ #pragma once
+ 
++#if defined(__x86_64__) || defined(_M_X64)
+ #include <immintrin.h>
++#endif
+ 
+ #include <vector>
+ 

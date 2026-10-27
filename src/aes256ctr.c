@@ -7,6 +7,10 @@
 #if RNG == RNG_AES256CTR
 #if TARGET == TARGET_GENERIC
 
+#if defined(__ARM_FEATURE_AES)
+#include <arm_neon.h>
+#endif
+
 static inline void
 incbe (uint8_t n[16])
 {
@@ -71,6 +75,11 @@ xtime (unsigned char c)
 static unsigned char
 bytesub (unsigned char c)
 {
+#if defined(__ARM_FEATURE_AES)
+  /* vaeseq with a zero key on a splatted byte is SubBytes (ShiftRows
+     is a no-op on equal bytes). */
+  return vgetq_lane_u8 (vaeseq_u8 (vdupq_n_u8 (c), vdupq_n_u8 (0)), 0);
+#else
   unsigned char c3 = multiply (square (c), c);
   unsigned char c7 = multiply (square (c3), c);
   unsigned char c63 = multiply (square (square (square (c7))), c7);
@@ -95,11 +104,24 @@ bytesub (unsigned char c)
   for (i = 0; i < 8; ++i)
     result |= h[i] << i;
   return result;
+#endif
 }
 
 static void
 aes256 (aes256ctr_state_t state, unsigned char *out, const unsigned char *in)
 {
+#if defined(__ARM_FEATURE_AES)
+  /* ARMv8 crypto extensions: vaeseq is AddRoundKey+SubBytes+ShiftRows,
+     vaesmcq is MixColumns. */
+  uint8x16_t b = vld1q_u8 (in);
+  int r;
+
+  for (r = 0; r < 13; ++r)
+    b = vaesmcq_u8 (vaeseq_u8 (b, vld1q_u8 (state->rkeys[r])));
+  b = vaeseq_u8 (b, vld1q_u8 (state->rkeys[13]));
+  b = veorq_u8 (b, vld1q_u8 (state->rkeys[14]));
+  vst1q_u8 (out, b);
+#else
   unsigned char _state[4][4];
   unsigned char new_state[4][4];
   int i, j, r;
@@ -136,6 +158,7 @@ aes256 (aes256ctr_state_t state, unsigned char *out, const unsigned char *in)
   for (j = 0; j < 4; ++j)
     for (i = 0; i < 4; ++i)
       out[j * 4 + i] = _state[i][j];
+#endif
 }
 
 static void
@@ -173,6 +196,11 @@ _aes256ctr_init (aes256ctr_state_t state, const uint8_t key[32],
       for (i = 0; i < 4; ++i)
         state->expanded[i][j] = temp[i] ^ state->expanded[i][j - 8];
     }
+
+  /* round keys in AES byte order */
+  for (j = 0; j < 60; ++j)
+    for (i = 0; i < 4; ++i)
+      state->rkeys[j / 4][(j % 4) * 4 + i] = state->expanded[i][j];
 }
 
 static void

@@ -1,8 +1,15 @@
 /*
  * TARGET: GENERIC, AMD64
- * Architecture target.
+ * Architecture target. Defaults to AMD64 on x86-64 and to the portable
+ * GENERIC code paths elsewhere (e.g. arm64).
  */
+#ifndef TARGET
+#if defined(__x86_64__) || defined(_M_X64)
 #define TARGET TARGET_AMD64
+#else
+#define TARGET TARGET_GENERIC
+#endif
+#endif
 
 /*
  * RNG: SHAKE128, AES256CTR
